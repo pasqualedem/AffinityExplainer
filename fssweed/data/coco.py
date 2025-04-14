@@ -15,10 +15,6 @@ from torchvision.transforms import PILToTensor, ToTensor
 from fssweed.utils.logger import get_logger
 
 import fssweed.data.utils as utils
-from fssweed.data.examples import (
-    build_example_generator,
-    uniform_sampling,
-)
 from fssweed.data.transforms import (
     PromptsProcessor,
 )
@@ -143,15 +139,6 @@ class CocoLVISDataset(Dataset):
             if x[AnnFileKeys.ID] in img2cat_keys
         }
         self.image_ids = list(self.images.keys())
-
-        # example generator/selector
-        self.example_generator = build_example_generator(
-            n_ways=self.n_ways,
-            n_shots=None,
-            images_to_categories=self.img2cat,
-            categories_to_imgs=self.cat2img,
-            sample_function=self.sample_function,
-        )
 
         # processing
         self.preprocess = preprocess
@@ -297,34 +284,6 @@ class CocoLVISDataset(Dataset):
         return [
             self._load_and_preprocess_image(self.images[img_id]) for img_id in img_ids
         ]
-
-    def _extract_examples(
-        self, img_data: dict, num_examples: int, num_classes: int
-    ) -> (list[int], list[int]):
-        """Chooses examples (and categories) for the query image.
-
-        Args:
-            img_data (dict): A dictionary containing the image data, as in the coco dataset.
-            num_examples (int): The number of examples to be chosen.
-
-        Returns:
-            (list, list): Returns two lists:
-                1. examples: A list of image ids of the examples.
-                2. cats: A list of sets of category ids of the examples.
-        """
-        img_cats = torch.tensor(list(self.img2cat[img_data[AnnFileKeys.ID]]))
-        sampled_classes = (
-            self.example_generator.sample_classes_from_query(img_cats, uniform_sampling)
-            if self.do_subsample
-            else img_cats
-        )
-        return self.example_generator.generate_examples(
-            query_image_id=img_data[AnnFileKeys.ID],
-            image_classes=img_cats,
-            sampled_classes=torch.tensor(sampled_classes),
-            num_examples=num_examples,
-            num_classes=num_classes,
-        )
 
     def _sample_num_points(self, image_id: int, ann: dict) -> int:
         """
@@ -517,85 +476,7 @@ class CocoLVISDataset(Dataset):
         Returns:
             dict: A dictionary containing the data.
         """
-        idx, batch_metadata = idx_metadata
-
-        num_examples = batch_metadata[BatchMetadataKeys.NUM_EXAMPLES]
-        possible_prompt_types = batch_metadata[BatchMetadataKeys.PROMPT_TYPES]
-        if batch_metadata[BatchMetadataKeys.PROMPT_CHOICE_LEVEL] == "episode":
-            possible_prompt_types = random.choice(possible_prompt_types)
-        num_classes = batch_metadata.get(BatchMetadataKeys.NUM_CLASSES, None)
-
-        base_image_data = self.images[self.image_ids[idx]]
-        image_ids, aux_cat_ids = self._extract_examples(
-            base_image_data, num_examples, num_classes
-        )
-
-        if self.all_example_categories:
-            aux_cat_ids = [aux_cat_ids[0]] + [
-                set(self.img2cat[img]) for img in image_ids[1:]
-            ]  # check if self.images must be called before
-
-        cat_ids = sorted(list(set(itertools.chain(*aux_cat_ids))))
-        cat_ids.insert(0, -1)  # add the background class
-
-        # load, stack and preprocess the images
-        images, image_key, ground_truths = self._get_images_or_embeddings(image_ids)
-
-        # create the prompt dicts
-        bboxes, masks, points, classes, img_sizes = self._get_prompts(
-            image_ids, cat_ids, possible_prompt_types
-        )
-
-        # obtain padded tensors
-        bboxes, flag_bboxes = utils.annotations_to_tensor(
-            self.prompts_processor, bboxes, img_sizes, PromptType.BBOX
-        )
-        masks, flag_masks = utils.annotations_to_tensor(
-            self.prompts_processor, masks, img_sizes, PromptType.MASK
-        )
-        points, flag_points = utils.annotations_to_tensor(
-            self.prompts_processor, points, img_sizes, PromptType.POINT
-        )
-
-        # obtain ground truths
-        if ground_truths is None:
-            ground_truths = self.compute_ground_truths(image_ids, cat_ids)
-
-        # stack ground truths
-        dims = torch.tensor(img_sizes)
-        max_dims = torch.max(dims, 0).values.tolist()
-        ground_truths = torch.stack(
-            [utils.collate_gts(x, max_dims) for x in ground_truths]
-        )
-
-        if self.load_gts:
-            # convert the ground truths to the right format
-            # by assigning 0 to n-1 to the classes
-            ground_truths_copy = ground_truths.clone()
-            # set ground_truths to all 0s
-            ground_truths = torch.zeros_like(ground_truths)
-            for i, cat_id in enumerate(cat_ids):
-                if cat_id == -1:
-                    continue
-                ground_truths[ground_truths_copy == cat_id] = i
-
-        flag_examples = flags_merge(flag_masks, flag_points, flag_bboxes)
-
-        data_dict = {
-            image_key: images,
-            BatchKeys.PROMPT_MASKS: masks,
-            BatchKeys.FLAG_MASKS: flag_masks,
-            BatchKeys.PROMPT_POINTS: points,
-            BatchKeys.FLAG_POINTS: flag_points,
-            BatchKeys.PROMPT_BBOXES: bboxes,
-            BatchKeys.FLAG_BBOXES: flag_bboxes,
-            BatchKeys.FLAG_EXAMPLES: flag_examples,
-            BatchKeys.DIMS: dims,
-            BatchKeys.CLASSES: classes,
-            BatchKeys.IMAGE_IDS: image_ids,
-            BatchKeys.GROUND_TRUTHS: ground_truths,
-        }
-        return data_dict
+        raise NotImplementedError("CocoLVISDataset does not support training")
 
     def __len__(self):
         return len(self.images)

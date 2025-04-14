@@ -5,7 +5,6 @@ from fssweed.data.utils import BatchKeys, PromptType
 from fssweed.data.pascal import PascalDataset
 import random
 
-from fssweed.data.examples import build_example_generator
 from fssweed.utils.utils import StrEnum
 
 class Pascal5iSplit(StrEnum):
@@ -71,16 +70,9 @@ class Pascal5iDataset(PascalDataset):
         ) = self._load_annotation_dicts()
         self.image_names = list(self.img2cat.keys())
 
-        self.example_generator = build_example_generator(
-            n_ways=self.n_ways,
-            n_shots=self.n_shots,
-            categories_to_imgs=self.cat2img,
-            images_to_categories=self.img2cat,
-        )
-
     def __getitem__(self, idx_batchmetadata: tuple[int, int]) -> dict:
-        if self.split == Pascal5iSplit.TRAIN or self.n_shots is "min":
-            return super().__getitem__(idx_batchmetadata)
+        if self.split == Pascal5iSplit.TRAIN:
+            raise NotImplementedError("Pascal5iDataset does not support training")
         elif self.split == Pascal5iSplit.VAL:
             idx, metadata = idx_batchmetadata
             intended_classes = [[] for _ in range(self.n_ways * self.n_shots + 1)]
@@ -137,31 +129,13 @@ class Pascal5iDataset(PascalDataset):
                     continue
                 ground_truths[ground_truths_copy == cat_id] = i
 
-        # make zeroes tensors for boxes, points and flags
-        prompt_bboxes = torch.zeros(
-            (len(images_data), len(cat_ids), 1, 4), dtype=torch.float32
-        )
-        flag_bboxes = torch.zeros(
-            (len(images_data), len(cat_ids), 1), dtype=torch.uint8
-        )
-        prompt_points = torch.zeros(
-            (len(images_data), len(cat_ids), 1, 2), dtype=torch.float32
-        )
-        flag_points = torch.zeros(
-            (len(images_data), len(cat_ids), 1), dtype=torch.uint8
-        )
-        
-        flag_examples = flags_merge(flag_masks, flag_points, flag_bboxes)
+        flag_examples = flags_merge(flag_masks, None, None)
 
         data_dict = {
             image_key: images,
             BatchKeys.PROMPT_MASKS: masks,
             BatchKeys.FLAG_MASKS: flag_masks,
             BatchKeys.FLAG_EXAMPLES: flag_examples,
-            BatchKeys.PROMPT_BBOXES: prompt_bboxes,
-            BatchKeys.FLAG_BBOXES: flag_bboxes,
-            BatchKeys.PROMPT_POINTS: prompt_points,
-            BatchKeys.FLAG_POINTS: flag_points,
             BatchKeys.DIMS: dims,
             BatchKeys.CLASSES: classes,
             BatchKeys.INTENDED_CLASSES: intended_classes,

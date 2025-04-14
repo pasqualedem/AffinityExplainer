@@ -1,4 +1,4 @@
-# FSSWeedMap
+# FSSAffinityExplainer
 
 
 ## Download the dataset

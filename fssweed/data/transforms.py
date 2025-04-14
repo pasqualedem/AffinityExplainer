@@ -53,7 +53,7 @@ class Denormalize(object):
 
 
 class PromptsProcessor:
-    def __init__(self, long_side_length: int = 1024, masks_side_length: int = 256, custom_preprocess=True):
+    def __init__(self, long_side_length: int = 1024, masks_side_length: int = 256, custom_preprocess=False):
         self.long_side_length = long_side_length
         self.masks_side_length = masks_side_length
         self.custom_preprocess=custom_preprocess

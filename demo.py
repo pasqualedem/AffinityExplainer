@@ -14,7 +14,7 @@ from PIL import Image
 from torchmetrics import F1Score, MetricCollection
 from torchvision.transforms.functional import resize
 from sklearn.decomposition import PCA
-
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 import numpy as np
 import torch
@@ -28,7 +28,7 @@ from fssweed.utils.utils import (
     to_device,
 )
 from fssweed.models import build_model
-from fssweed.data import get_preprocessing, get_testloaders
+from fssweed.data import get_dataloaders, get_preprocessing, get_testloaders
 from fssweed.data.utils import (
     AnnFileKeys,
     PromptType,
@@ -52,9 +52,30 @@ PROMPT_IMAGES = [
     'frame0048_0.png',
 ]
 
+PASCAL_NAME = "val_pascal5i"
+PASCAL_PARAMS = {
+    "name": "pascal",
+    "data_dir": "data/pascal",
+    "split": "val",
+    "val_fold_idx": 3,
+    "n_folds": 4,
+    "n_shots": 2,
+    "n_ways": 1,
+    "do_subsample": False,
+    "val_num_samples": 100,
+    "ignore_borders": True,
+}
+
 
 parameters = {
-    "dataloader": {"num_workers": 0},
+    "dataloader": {
+        "num_workers": 0,
+        "possible_batch_example_nums": [[1, 2, 4]],
+        "val_possible_batch_example_nums": [[1, 1]],
+        "prompt_types": ["mask"],
+        "prompt_choice_level": ["episode"],
+        "val_prompt_types": ["mask"],
+        },
     "dataset": {
         "preprocess": {
             "mean": [0.485, 0.456, 0.406],
@@ -62,58 +83,59 @@ parameters = {
             "image_size": 384,
         },
         "datasets": {
-            "test_weedmap": {
-                "train_root": "../Datasets/WeedMap/0_rotations_processed_003_test/RedEdge/000",
-                "test_root": "../Datasets/WeedMap/0_rotations_processed_003_test/RedEdge/003",
-                "prompt_images": None,
-                "remove_black_images": False,
-            }
+            PASCAL_NAME: PASCAL_PARAMS,
         },
     },
     "model": {
         "name": "dcama",
         "backbone": "swin",
         "backbone_checkpoint": "checkpoints/swin_base_patch4_window12_384.pth",
-        # "model_checkpoint": "checkpoints/swin_fold0_pascal_modcross_soft.pt",
-        'model_checkpoint': "checkpoints/f4z7ghu7.pt",
-        "concat_support": False,
+        "model_checkpoint": "checkpoints/swin_fold0_pascal_modcross_soft.pt",
+        # 'model_checkpoint': "checkpoints/f4z7ghu7.pt",
+        "concat_support": True,
         "image_size": 384,
-        "train_backbone": True,
     }
 }
+MODEL_CHECKPOINTS = [
+    "checkpoints/swin_fold0_pascal_modcross_soft.pt",
+    "checkpoints/swin_fold0.pt",
+]
 
 @st.cache_data
-def get_data(support_images):
-    parameters["dataset"]["datasets"]["test_weedmap"]["prompt_images"] = support_images
-    preprocess = get_preprocessing(parameters["dataset"])
-    test_loaders = get_testloaders(
+def get_data(n_ways, n_shots):
+    parameters["dataset"]["datasets"][PASCAL_NAME]["n_ways"] = n_ways
+    parameters["dataset"]["datasets"][PASCAL_NAME]["n_shots"] = n_shots
+    
+    _, val, _ = get_dataloaders(
         parameters["dataset"],
-        parameters["dataloader"]
+        parameters["dataloader"],
+        num_processes=1,
     )
-    weedmap = test_loaders["test_weedmap"]
-    return weedmap
+    return val[PASCAL_NAME]
     
     
 @st.cache_data
-def get_model(use_pe, device):
+def get_model(use_pe, checkpoint, device):
+    parameters["model"]["model_checkpoint"] = checkpoint
     parameters["model"]["pe"] = use_pe
     model = build_model(parameters["model"])
     model.to(device)
     model.eval()
     return model
 
-def pred_layer(model, coarse_masks1, coarse_masks2, coarse_masks3, query_feats):
+def pred_layer(model, coarse_masks1, coarse_masks2, coarse_masks3, query_feats, support_feats, n_shots):
     mix = model.model.mix_maps(coarse_masks1, coarse_masks2, coarse_masks3)
-    mix, _, _ = model.model.skip_concat_features(mix, query_feats, None, None)
+    mix, _, _ = model.model.skip_concat_features(mix, query_feats, support_feats, n_shots)
     logit_mask, _, _ = model.model.upsample_and_classify(mix)
     return logit_mask
 
 
-def feature_ablation(model, result, chosen_class, selected_x, selected_y):
+def feature_ablation(model, result, chosen_class, selected_x, selected_y, n_shots=None):
     query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
+    support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
     coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
     with torch.no_grad():
-        orig_out = pred_layer(model, *coarse_masks, query_feats)[:, :, selected_x, selected_y]
+        orig_out = pred_layer(model, *coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
     diffs = []
     for i in range(len(coarse_masks)):
         for j in range(coarse_masks[i].shape[1]):
@@ -121,7 +143,7 @@ def feature_ablation(model, result, chosen_class, selected_x, selected_y):
             new_input[:, j] = 0
             new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
             with torch.no_grad():
-                new_out = pred_layer(model, *new_expl_input, query_feats)[:, :, selected_x, selected_y]
+                new_out = pred_layer(model, *new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
             diffs.append(orig_out - new_out)
     
     abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
@@ -139,27 +161,44 @@ def image_blend(image, heatmap):
     st.write("blender", blended)
     return blended
 
-def explain(model, input_dict, result):
-    num_classes = 2
-    selected_x = 56
-    selected_y = 65
-    
-    
+def explain(model, input_dict, result, num_classes):
     attns = result[ResultDict.ATTENTIONS]
     masks = input_dict[BatchKeys.PROMPT_MASKS]
     flag_examples = input_dict[BatchKeys.FLAG_EXAMPLES]
     target_image = input_dict[BatchKeys.IMAGES][0, 0]
+    support_images = input_dict[BatchKeys.IMAGES][0, 1:]
+    support_images = rearrange(support_images, "n c h w -> c h (n w)")
+    
     target_shape = input_dict[BatchKeys.IMAGES][:, 0].shape[2:]
     
+    st.write("### Click on the image to select a pixel")
+    coords = streamlit_image_coordinates(
+        (unnormalize(target_image.unsqueeze(0))[0]*255).numpy().transpose(1, 2, 0).astype(np.uint8),
+    )
+    
+    if coords:
+        st.session_state["coords"] = coords
+    if st.session_state.get("coords") is not None:
+        coords = st.session_state["coords"]
+        selected_x = coords["x"]
+        selected_y = coords["y"]
+    else:
+        return
+    
+    st.write("Coordinates", (coords["x"], coords["y"]))
     for chosen_class in range(num_classes):
 
         st.write(f"#### Class {chosen_class+1} interpretation")
         class_attns = attns[chosen_class]
         class_examples = flag_examples[:, :, chosen_class + 1]
         mask = masks[:, :, chosen_class+1, ::][class_examples]
-        support_mask = resize((result[ResultDict.LOGITS].argmax(dim=1) == chosen_class+1), target_shape, interpolation=TvT.InterpolationMode.NEAREST).float()
+        class_shots = mask.shape[0]
+        
+        support_mask = resize(mask, target_shape, interpolation=TvT.InterpolationMode.NEAREST).float()
+        support_mask = rearrange(support_mask, "n h w -> h (n w)")
         support_mask = 2*support_mask - 1
         # support_mask = TvT.gaussian_blur(support_mask, (9,9), sigma=5)
+        st.write("Support mask", support_mask)
 
         level_contributions = []
         for level_attn in class_attns:
@@ -168,21 +207,20 @@ def explain(model, input_dict, result):
 
             hw = level_attn.shape[-2]
             h = w = int(hw ** 0.5)
-            mask_current = resize(mask, (h, w), interpolation=TvT.InterpolationMode.NEAREST)
-            mask_current = rearrange(mask_current, "n h w -> 1 1 n (h w)")
             level_attn = F.softmax(level_attn, dim=-1)
-            level_attn = rearrange(level_attn, "b (h1 w1) (n h2 w2) -> (b h2 w2 n) h1 w1", n=mask_current.shape[2], h1=h, w1=w, h2=h, w2=w)
+            level_attn = rearrange(level_attn, "b (h1 w1) (n h2 w2) -> (b h2 w2 n) h1 w1", n=class_shots, h1=h, w1=w, h2=h, w2=w)
             level_attn = resize(level_attn, target_shape)
             level_attn = level_attn[:, selected_y, selected_x]
-            level_attn = rearrange(level_attn, "(b h2 w2 n) -> (b n) h2 w2", h2=h, w2=w, n=mask_current.shape[2])
+            level_attn = rearrange(level_attn, "(b h2 w2 n) -> (b n) h2 w2", h2=h, w2=w, n=class_shots)
             resized_level_attn = resize(level_attn, target_shape, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
+            resized_level_attn = rearrange(resized_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
             level_contributions.append(resized_level_attn)
 
         contrib_seq = torch.stack(level_contributions)
         contrib = contrib_seq.mean(dim=0)
         
         with st.spinner("Doing Feature Ablation..."):
-            cmask_contrib = feature_ablation(model, result, chosen_class, selected_x, selected_y)
+            cmask_contrib = feature_ablation(model, result, chosen_class, selected_x, selected_y, n_shots=class_shots)
         st.write(contrib_seq)
         with st.expander("Full masks"):
             st.write(min_max_scale(contrib_seq).chans(cmap="viridis").fig)
@@ -198,14 +236,14 @@ def explain(model, input_dict, result):
         col2.write(f"Weighted contribution")
         cmask_contrib = rearrange(cmask_contrib, "c -> c 1 1 1")
         weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=0))
-        blended_weighted_contrib = image_blend(target_image, weighted_contrib.clamp(0, 1))
+        blended_weighted_contrib = image_blend(support_images, weighted_contrib.clamp(0, 1))
         col2.write(blended_weighted_contrib.rgb.fig)
         col2.write(weighted_contrib.chans(cmap="viridis").fig)
         sign_weighted_contrib = (weighted_contrib * support_mask)
         col2.write(sign_weighted_contrib.chans(cmap="viridis").fig)
         # col2.write(weighted_contrib.chans(cmap="viridis").fig)
-        pos_contib = image_blend(target_image, sign_weighted_contrib.clamp(0, 1))
-        neg_contib = image_blend(target_image, (-sign_weighted_contrib).clamp(0, 1))
+        pos_contib = image_blend(support_images, sign_weighted_contrib.clamp(0, 1))
+        neg_contib = image_blend(support_images, (-sign_weighted_contrib).clamp(0, 1))
         col2.write(sign_weighted_contrib.clamp(0, 1).chans.fig)
         col2.write((-sign_weighted_contrib).clamp(0, 1).chans.fig)
         col2.write(pos_contib.rgb.fig)
@@ -364,23 +402,13 @@ def main():
     with st.sidebar:
         st.write("### Parameters")
         device = st.selectbox("Device", ["cpu", "cuda"], index=0)
-        support_images = st.multiselect(
-            "Support images", PROMPT_IMAGES, default=PROMPT_IMAGES[:1]
-        )
         use_pe = st.checkbox("Use PE", value=True)
+        n_ways = st.number_input("N ways", value=1, min_value=1, max_value=10)
+        n_shots = st.number_input("N shots", value=2, min_value=1, max_value=10)
+        model_checkpoint = st.selectbox("Model checkpoint", MODEL_CHECKPOINTS, index=0)
     
-    model = get_model(use_pe, device)
-    data = get_data(support_images)
-    
-    examples = data.dataset.extract_prompts()
-    examples = to_device(examples, device)
-    
-    col1, col2 = st.columns(2)
-    col1.write("### Support images")
-    col1.write(unnormalize(examples[BatchKeys.IMAGES]).rgb.fig)
-    
-    col2.write("### Support masks")
-    col2.write(create_rgb_segmentation(examples[BatchKeys.PROMPT_MASKS], num_classes=3).rgb.fig)
+    model = get_model(use_pe, model_checkpoint, device)
+    data = get_data(n_shots=n_shots, n_ways=n_ways)
     
     if "iterator" not in st.session_state:
         st.session_state["iterator"] = iter(data)
@@ -388,19 +416,39 @@ def main():
         st.session_state["batch"] = next(st.session_state["iterator"])
     if st.button("Next"):
         st.session_state["batch"] = next(st.session_state["iterator"])
+        st.session_state.pop("result", None)
+        st.session_state.pop("coords", None)
     batch = st.session_state["batch"]
     
-    image_dict, gt = batch
+    batch, dataset_name  = batch
+    
+    substitutor = Substitutor(substitute=False)
+    substitutor.reset(batch=batch)
+    batch = next(substitutor)
+    input_dict, gt = batch
+    
+    col1, col2 = st.columns(2)
+    col1.write("### Support images")
+    col1.write(unnormalize(input_dict[BatchKeys.IMAGES][:, 1:]).rgb.fig)
+    
+    col2.write("### Support masks")
+    col2.write(create_rgb_segmentation(input_dict[BatchKeys.PROMPT_MASKS][0], num_classes=3).rgb.fig)
     
     st.write("Query Image")
-    st.write(unnormalize(image_dict[BatchKeys.IMAGES][:, 0]).rgb.fig)
+    st.write(unnormalize(input_dict[BatchKeys.IMAGES][:, 0]).rgb.fig)
+    st.write(data.dataset.datasets[PASCAL_NAME].n_shots)
     
-    input_dict = to_device(merge_dicts(prompts=examples, imgs=image_dict), device)
+    input_dict = to_device(input_dict, device)
+    num_classes = input_dict[BatchKeys.PROMPT_MASKS].shape[2] - 1
     gt = to_device(gt, device)
+    st.write(gt)
+    
+    st.write(input_dict)
     
     if st.button("Predict"):
         with torch.no_grad():
             result = model(input_dict)
+            st.write(result[ResultDict.LOGITS])
             
         st.session_state["result"] = result
         
@@ -413,12 +461,12 @@ def main():
             attention_summary(result, input_dict[BatchKeys.PROMPT_MASKS], input_dict[BatchKeys.FLAG_EXAMPLES])
         
         pred_col.write("Predictions")
-        pred_col.write(create_rgb_segmentation(outputs, num_classes=3).rgb.fig)
+        pred_col.write(create_rgb_segmentation(outputs, num_classes=num_classes+1).rgb.fig)
         
         gt_col.write("Ground Truth")
-        gt_col.write(create_rgb_segmentation(gt, num_classes=3).rgb.fig)
+        gt_col.write(create_rgb_segmentation(gt, num_classes=num_classes+1).rgb.fig)
         
-        explain(model, input_dict, result)
+        explain(model, input_dict, result, num_classes)
     
 if __name__ == "__main__":
     main()

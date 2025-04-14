@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torch
 
 from einops import rearrange
@@ -58,7 +59,8 @@ class Substitutor:
         
         self.ground_truths = ground_truths.clone()
         self.batch = {
-            key: value.clone() for key, value in batch.items()
+            key: value.clone() if isinstance(value, torch.Tensor) else deepcopy(value)
+            for key, value in batch.items()
         }
         self.num_examples = self.batch[BatchKeys.IMAGES].shape[1]
 

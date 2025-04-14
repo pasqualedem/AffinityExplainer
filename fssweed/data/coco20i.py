@@ -4,7 +4,6 @@ import torch
 
 import fssweed.data.utils as utils
 from fssweed.data.coco import CocoLVISDataset
-from fssweed.data.examples import build_example_generator
 from fssweed.data.utils import (
     AnnFileKeys,
     BatchKeys,
@@ -99,15 +98,7 @@ class Coco20iDataset(CocoLVISDataset):
             if x[AnnFileKeys.ID] in img2cat_keys
         }
         self.image_ids = list(self.images.keys())
-
-        # example generator/selector
-        self.example_generator = build_example_generator(
-            n_ways=self.n_ways,
-            n_shots=self.n_shots,
-            categories_to_imgs=self.cat2img,
-            images_to_categories=self.img2cat,
-        )
-
+        
     def __getitem__(self, idx_batchmetadata: tuple[int, int]) -> dict:
         """Get an item from the dataset. Preserves the original functionality
         of the COCO dataset for the train split. For the val split, it samples
@@ -199,10 +190,6 @@ class Coco20iDataset(CocoLVISDataset):
                 image_key: images,
                 BatchKeys.PROMPT_MASKS: masks,
                 BatchKeys.FLAG_MASKS: flag_masks,
-                BatchKeys.PROMPT_POINTS: points,
-                BatchKeys.FLAG_POINTS: flag_points,
-                BatchKeys.PROMPT_BBOXES: bboxes,
-                BatchKeys.FLAG_BBOXES: flag_bboxes,
                 BatchKeys.FLAG_EXAMPLES: flag_examples,
                 BatchKeys.DIMS: dims,
                 BatchKeys.CLASSES: classes,
