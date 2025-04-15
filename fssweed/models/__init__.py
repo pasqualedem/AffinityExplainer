@@ -52,26 +52,63 @@ MODEL_REGISTRY = {
     **ENCODERS,
 }
 
-STUDENT_REGISTRY = {
-    "conv_distillator": build_dcama_distiller,
-    "attn_distillator": build_attn_distiller
-}
-
 def build_model(params):
     name = params["name"]
     params = {k: v for k, v in params.items() if k != "name"}
     return MODEL_REGISTRY[name](**params)
 
 
-def build_distillator(params):
-    teacher = params["teacher"]
-    teacher = build_model(teacher)
-    
-    student_params = params["student"]
-    name = student_params["name"]
-    student_params = {k: v for k, v in student_params.items() if k != "name"}
-    student_params["teacher"] = teacher
-    return STUDENT_REGISTRY[name](**student_params)
-    
+def get_dcama(dataset="pascal", val_fold_idx=0, use_pe=True, **kwargs):
+    name = "dcama"
+    params = dict(
+        backbone_checkpoint="checkpoints/dcama/swin_base_patch4_window12_384.pth",
+        model_checkpoint=f"checkpoints/dcama/{dataset}/swin_fold{val_fold_idx}.pt",
+        pe=use_pe,
+    )
+    image_size = 384
+    return MODEL_REGISTRY[name](**params), image_size
 
-MODEL_REGISTRY["distillator"] = build_distillator
+
+def get_bam(dataset="pascal", k_shots=1, val_fold_idx=0, **kwargs):
+    name = "bam"
+    params = dict(
+        shots=k_shots,
+        val_fold_idx=val_fold_idx,
+        dataset=dataset,
+    )
+    image_size = 641
+    bam = MODEL_REGISTRY[name](**params)
+    return bam, image_size
+
+
+def get_hdmnet(k_shots=1, val_fold_idx=0, **kwargs):
+    name = "hdmnet"
+    params = dict(
+        shots=k_shots,
+        val_fold_idx=val_fold_idx,
+    )
+    image_size = 641
+    hdmnet = MODEL_REGISTRY[name](**params)
+    return hdmnet, image_size
+
+
+def get_dmtnet(**kwargs):
+    name = "dmtnet"
+    params = dict(
+        model_checkpoint="checkpoints/dmtnet.pt",
+    )
+    image_size = 400
+    dmtnet = MODEL_REGISTRY[name](**params)
+    return dmtnet, image_size
+
+
+SUPPORTED_MODELS = {
+    "dcama": get_dcama,
+    "bam": get_bam,
+    "hdmnet": get_hdmnet,
+    "dmtnet": get_dmtnet,
+}
+
+
+def build_model_preconfigured(model_name, **kwargs):
+    return SUPPORTED_MODELS[model_name](**kwargs)

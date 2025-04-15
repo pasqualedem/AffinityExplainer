@@ -10,7 +10,7 @@ from torchvision.models import resnet
 
 from fssweed.models.dcama.swin_transformer import SwinTransformer
 from fssweed.models.dcama.transformer import MultiHeadedAttention, PositionalEncoding, get_attn_fn
-from fssweed.data.utils import BatchKeys
+from fssweed.data.utils import BatchKeys, sum_scale
 from fssweed.utils.utils import ResultDict
 
 
@@ -631,6 +631,32 @@ class DCAMAMultiClass(DCAMA):
         
     def get_learnable_params(self, train_params):
         return self.parameters()
+    
+    def pred_layer(self, coarse_masks1, coarse_masks2, coarse_masks3, query_feats, support_feats, n_shots):
+        mix = self.model.mix_maps(coarse_masks1, coarse_masks2, coarse_masks3)
+        mix, _, _ = self.model.skip_concat_features(mix, query_feats, support_feats, n_shots)
+        logit_mask, _, _ = self.model.upsample_and_classify(mix)
+        return logit_mask
+
+
+    def feature_ablation(self, result, chosen_class, selected_x, selected_y, n_shots=None):
+        query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
+        support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
+        coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
+        with torch.no_grad():
+            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+        diffs = []
+        for i in range(len(coarse_masks)):
+            for j in range(coarse_masks[i].shape[1]):
+                new_input = coarse_masks[i].clone()
+                new_input[:, j] = 0
+                new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
+                with torch.no_grad():
+                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+                diffs.append(orig_out - new_out)
+        
+        abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
+        return abl_attr
 
 
 class WeedDCAMA(AbstractDCAMA):

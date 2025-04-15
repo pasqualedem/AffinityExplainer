@@ -27,15 +27,13 @@ from fssweed.utils.utils import (
     torch_dict_save,
     to_device,
 )
-from fssweed.models import build_model
+from fssweed.models import SUPPORTED_MODELS, build_model_preconfigured
 from fssweed.data import get_dataloaders, get_preprocessing, get_testloaders
 from fssweed.data.utils import (
     AnnFileKeys,
     PromptType,
     BatchKeys,
-    merge_dicts,
     min_max_scale,
-    sum_scale,
 )
 from fssweed.substitution import Substitutor
 import matplotlib.pyplot as plt
@@ -89,22 +87,21 @@ parameters = {
     "model": {
         "name": "dcama",
         "backbone": "swin",
-        "backbone_checkpoint": "checkpoints/swin_base_patch4_window12_384.pth",
+        # "backbone_checkpoint": "checkpoints/swin_base_patch4_window12_384.pth",
         "model_checkpoint": "checkpoints/swin_fold0_pascal_modcross_soft.pt",
         # 'model_checkpoint': "checkpoints/f4z7ghu7.pt",
         "concat_support": True,
         "image_size": 384,
     }
 }
-MODEL_CHECKPOINTS = [
-    "checkpoints/swin_fold0_pascal_modcross_soft.pt",
-    "checkpoints/swin_fold0.pt",
-]
+
 
 @st.cache_data
-def get_data(n_ways, n_shots):
+def get_data(n_ways, n_shots, image_size):
     parameters["dataset"]["datasets"][PASCAL_NAME]["n_ways"] = n_ways
     parameters["dataset"]["datasets"][PASCAL_NAME]["n_shots"] = n_shots
+    parameters["dataset"]["datasets"][PASCAL_NAME]["image_size"] = image_size
+    parameters["dataset"]["preprocess"]["image_size"] = image_size
     
     _, val, _ = get_dataloaders(
         parameters["dataset"],
@@ -115,39 +112,50 @@ def get_data(n_ways, n_shots):
     
     
 @st.cache_data
-def get_model(use_pe, checkpoint, device):
-    parameters["model"]["model_checkpoint"] = checkpoint
-    parameters["model"]["pe"] = use_pe
-    model = build_model(parameters["model"])
+def get_model(model, use_pe, n_shots, device):
+    model, image_size = build_model_preconfigured(model_name=model, use_pe=use_pe, n_shots=n_shots)
     model.to(device)
     model.eval()
-    return model
-
-def pred_layer(model, coarse_masks1, coarse_masks2, coarse_masks3, query_feats, support_feats, n_shots):
-    mix = model.model.mix_maps(coarse_masks1, coarse_masks2, coarse_masks3)
-    mix, _, _ = model.model.skip_concat_features(mix, query_feats, support_feats, n_shots)
-    logit_mask, _, _ = model.model.upsample_and_classify(mix)
-    return logit_mask
+    return model, image_size
 
 
-def feature_ablation(model, result, chosen_class, selected_x, selected_y, n_shots=None):
-    query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
-    support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
-    coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
-    with torch.no_grad():
-        orig_out = pred_layer(model, *coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
-    diffs = []
-    for i in range(len(coarse_masks)):
-        for j in range(coarse_masks[i].shape[1]):
-            new_input = coarse_masks[i].clone()
-            new_input[:, j] = 0
-            new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
-            with torch.no_grad():
-                new_out = pred_layer(model, *new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
-            diffs.append(orig_out - new_out)
-    
-    abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
-    return abl_attr
+def preprocess_attentions(attentions):
+    model_name = st.session_state.get("model_name", None)
+    if model_name == "dcama":
+        processed_attentions = []
+        for class_attns in attentions:
+            processed_level_attentions = []
+            for level_attn in class_attns:
+                level_attn = level_attn.mean(dim=1)
+                processed_level_attentions.append(level_attn)
+            processed_attentions.append(processed_level_attentions)
+        return processed_attentions
+        
+        return attentions
+    elif model_name == "dmtnet":
+        processed_attentions = []
+        for class_attns in attentions:
+            num_shots = len(class_attns)
+            st.write(class_attns, num_shots)
+            level_attentions = [
+                torch.cat(
+                    [
+                        class_attns[i][j]
+                        for i in range(num_shots)
+                    ],
+                    dim=-2
+                )
+                for j in range(len(class_attns[0]))
+            ]
+            processed_level_attentions = []
+            for level_attn in level_attentions:
+                level_attn = rearrange(level_attn, "b c h1 w1 nh2 w2 -> b c (h1 w1) (nh2 w2)")
+                for i in range(level_attn.shape[1]):
+                    processed_level_attentions.append(level_attn[:, i])
+            processed_attentions.append(processed_level_attentions)
+        return processed_attentions
+                
+
 
 def image_blend(image, heatmap):
     alpha = 0.8
@@ -161,8 +169,9 @@ def image_blend(image, heatmap):
     st.write("blender", blended)
     return blended
 
+
 def explain(model, input_dict, result, num_classes):
-    attns = result[ResultDict.ATTENTIONS]
+    attns = preprocess_attentions(result[ResultDict.ATTENTIONS])
     masks = input_dict[BatchKeys.PROMPT_MASKS]
     flag_examples = input_dict[BatchKeys.FLAG_EXAMPLES]
     target_image = input_dict[BatchKeys.IMAGES][0, 0]
@@ -170,6 +179,7 @@ def explain(model, input_dict, result, num_classes):
     support_images = rearrange(support_images, "n c h w -> c h (n w)")
     
     target_shape = input_dict[BatchKeys.IMAGES][:, 0].shape[2:]
+    st.write(target_shape)
     
     st.write("### Click on the image to select a pixel")
     coords = streamlit_image_coordinates(
@@ -203,8 +213,6 @@ def explain(model, input_dict, result, num_classes):
         level_contributions = []
         for level_attn in class_attns:
 
-            level_attn = level_attn.mean(dim=1)
-
             hw = level_attn.shape[-2]
             h = w = int(hw ** 0.5)
             level_attn = F.softmax(level_attn, dim=-1)
@@ -220,7 +228,10 @@ def explain(model, input_dict, result, num_classes):
         contrib = contrib_seq.mean(dim=0)
         
         with st.spinner("Doing Feature Ablation..."):
-            cmask_contrib = feature_ablation(model, result, chosen_class, selected_x, selected_y, n_shots=class_shots)
+            cmask_contrib = model.feature_ablation(result, chosen_class, selected_x, selected_y, n_shots=class_shots)
+            if cmask_contrib is None:
+                cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
+                
         st.write(contrib_seq)
         with st.expander("Full masks"):
             st.write(min_max_scale(contrib_seq).chans(cmap="viridis").fig)
@@ -405,10 +416,10 @@ def main():
         use_pe = st.checkbox("Use PE", value=True)
         n_ways = st.number_input("N ways", value=1, min_value=1, max_value=10)
         n_shots = st.number_input("N shots", value=2, min_value=1, max_value=10)
-        model_checkpoint = st.selectbox("Model checkpoint", MODEL_CHECKPOINTS, index=0)
+        model = st.selectbox("Model", list(SUPPORTED_MODELS.keys()), index=0, key="model_name")
     
-    model = get_model(use_pe, model_checkpoint, device)
-    data = get_data(n_shots=n_shots, n_ways=n_ways)
+    model, image_size = get_model(model, use_pe, n_shots, device)
+    data = get_data(n_shots=n_shots, n_ways=n_ways, image_size=image_size)
     
     if "iterator" not in st.session_state:
         st.session_state["iterator"] = iter(data)

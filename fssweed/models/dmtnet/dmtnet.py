@@ -9,6 +9,8 @@ import torchvision
 from torchvision.models import resnet
 from torchvision.models import vgg
 
+from fssweed.utils.utils import ResultDict
+
 from .base.feature import extract_feat_vgg, extract_feat_res
 from .base.correlation import Correlation
 from .learner import HPNLearner
@@ -98,7 +100,10 @@ class DMTNetwork(nn.Module):
         bg_logit_mask = self.hpn_learner(bg_corr)
         bg_logit_mask = F.interpolate(bg_logit_mask, support_img.size()[2:], mode='bilinear', align_corners=True)
 
-        return logit_mask, bg_logit_mask, pred_mask
+        return {
+            ResultDict.LOGITS: (logit_mask, bg_logit_mask, pred_mask),
+            ResultDict.ATTENTIONS: corr
+            }
                
     def get_index(self, i, j, k):
         assert i >= j
@@ -245,9 +250,12 @@ class DMTNetwork(nn.Module):
         logit_mask_agg = 0
         logit_mask_orig = []
         bg_logit_mask_orig = []
+        attentions = []
 
         for s_idx in range(nshot):
-            logit_mask, bg_logit_mask, _ = self.predict_mask_1shot(batch['query_img'], batch['support_imgs'][:, s_idx], batch['support_masks'][:, s_idx])
+            result = self.predict_mask_1shot(batch['query_img'], batch['support_imgs'][:, s_idx], batch['support_masks'][:, s_idx])
+            logit_mask, bg_logit_mask, _ = result[ResultDict.LOGITS]
+            attentions.append(result[ResultDict.ATTENTIONS])
             logit_mask_agg += logit_mask.argmax(dim=1)
             logit_mask_orig.append(logit_mask)
             bg_logit_mask_orig.append(bg_logit_mask)
@@ -264,7 +272,10 @@ class DMTNetwork(nn.Module):
         # pred_mask[pred_mask < 0.5] = 0
         # pred_mask[pred_mask >= 0.5] = 1
 
-        return pred_mask, logit_mask_orig, bg_logit_mask_orig
+        return {
+            ResultDict.LOGITS: (pred_mask, logit_mask_orig, bg_logit_mask_orig),
+            ResultDict.ATTENTIONS: attentions
+        }
     
     def predict_mask_nshot_support(self, batch, nshot):
         # Perform multiple prediction given (nshot) number of different support sets
@@ -327,7 +338,7 @@ class DMTNetwork(nn.Module):
         result = []
         for idx, query_feat in enumerate(query_feats):
             bsz,_,h,w = query_feat.shape
-            out = torch.zeros(bsz, 2, h, w).float().cuda()
+            out = torch.zeros(bsz, 2, h, w).float().to(query_feat.device)
             for i, _ in enumerate(prototypes_f[idx]):
                 s_fg = F.cosine_similarity(query_feat, prototypes_f[idx][i].unsqueeze(-1).unsqueeze(-1), dim=1) # [bsz, h, w]
                 s_bg = F.cosine_similarity(query_feat, prototypes_b[idx][i].unsqueeze(-1).unsqueeze(-1), dim=1) # [bsz, h, w]

@@ -54,6 +54,7 @@ class DMTNetMultiClass(DMTNetwork):
         assert masks.shape[0] == 1, "Only tested with batch size = 1"
         voting_masks = []
         fg_logits_masks = []
+        attentions = []
         # get logits for each class
         for c in range(masks.size(2)):
             class_examples = x[BatchKeys.FLAG_EXAMPLES][:, :, c + 1]
@@ -64,16 +65,18 @@ class DMTNetMultiClass(DMTNetwork):
                 "support_masks": masks[:, :, c, ::][class_examples].unsqueeze(0),
             }
             if n_shots == 1:
-                logit_mask, bg_logit_mask, pred_mask = self.predict_mask_1shot(
+                result = self.predict_mask_1shot(
                     class_input_dict["query_img"],
                     class_input_dict["support_imgs"][:, 0],
                     class_input_dict["support_masks"][:, 0],
                 )
+                logit_mask, bg_logit_mask, pred_mask = result[ResultDict.LOGITS]
+                attentions.append([result[ResultDict.ATTENTIONS]])
                 fg_logits_masks.append(logit_mask)
             else:
-                (voting_mask, logit_mask_orig, bg_logit_mask_orig) = (
-                    self.predict_mask_nshot(class_input_dict, n_shots)
-                )
+                result = self.predict_mask_nshot(class_input_dict, n_shots)
+                (voting_mask, logit_mask_orig, bg_logit_mask_orig) = result[ResultDict.LOGITS]
+                attentions.append(result[ResultDict.ATTENTIONS])
                 voting_masks.append(voting_mask)
                 
         if fg_logits_masks:
@@ -93,6 +96,7 @@ class DMTNetMultiClass(DMTNetwork):
 
         return {
             ResultDict.LOGITS: logits,
+            ResultDict.ATTENTIONS: attentions,
         }
 
     def postprocess_masks(self, logits, dims):
@@ -125,3 +129,30 @@ class DMTNetMultiClass(DMTNetwork):
             ]
         )
         return logits
+    
+    def pred_layer(self, coarse_masks1, coarse_masks2, coarse_masks3, query_feats, support_feats, n_shots):
+        mix = self.model.mix_maps(coarse_masks1, coarse_masks2, coarse_masks3)
+        mix, _, _ = self.model.skip_concat_features(mix, query_feats, support_feats, n_shots)
+        logit_mask, _, _ = self.model.upsample_and_classify(mix)
+        return logit_mask
+
+
+    def feature_ablation(self, result, chosen_class, selected_x, selected_y, n_shots=None):
+        return None
+        query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
+        support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
+        coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
+        with torch.no_grad():
+            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+        diffs = []
+        for i in range(len(coarse_masks)):
+            for j in range(coarse_masks[i].shape[1]):
+                new_input = coarse_masks[i].clone()
+                new_input[:, j] = 0
+                new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
+                with torch.no_grad():
+                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+                diffs.append(orig_out - new_out)
+        
+        abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
+        return abl_attr
