@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
 
-from fssweed.data.utils import BatchKeys
+from fssweed.data.utils import BatchKeys, sum_scale
 from fssweed.models.dmtnet.dmtnet import DMTNetwork
 from fssweed.utils.utils import ResultDict
 
@@ -130,29 +130,49 @@ class DMTNetMultiClass(DMTNetwork):
         )
         return logits
     
-    def pred_layer(self, coarse_masks1, coarse_masks2, coarse_masks3, query_feats, support_feats, n_shots):
-        mix = self.model.mix_maps(coarse_masks1, coarse_masks2, coarse_masks3)
-        mix, _, _ = self.model.skip_concat_features(mix, query_feats, support_feats, n_shots)
-        logit_mask, _, _ = self.model.upsample_and_classify(mix)
-        return logit_mask
+    def pred_layer(self, corr, bg_corr, image_size):
+        logit_mask = self.hpn_learner(corr)
+        logit_mask = F.interpolate(logit_mask, image_size, mode='bilinear', align_corners=True)
+        bg_logit_mask = self.hpn_learner(bg_corr)
+        bg_logit_mask = F.interpolate(bg_logit_mask, image_size, mode='bilinear', align_corners=True)
+        return logit_mask, bg_logit_mask
 
-
-    def feature_ablation(self, result, chosen_class, selected_x, selected_y, n_shots=None):
-        return None
-        query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
-        support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
-        coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
+    def feature_ablation(self, result, chosen_class, selected_x, selected_y, image_size, n_shots, **kwwargs):
+        attentions = result[ResultDict.ATTENTIONS]
         with torch.no_grad():
-            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+            for shot in range(n_shots):
+                corr, bg_corr = attentions[chosen_class][shot]
+                orig_out, bg_orig_out = self.pred_layer(corr, bg_corr, image_size)
+                orig_out = orig_out[:, :, selected_x, selected_y]
+                bg_orig_out = bg_orig_out[:, :, selected_x, selected_y] 
         diffs = []
-        for i in range(len(coarse_masks)):
-            for j in range(coarse_masks[i].shape[1]):
-                new_input = coarse_masks[i].clone()
-                new_input[:, j] = 0
-                new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
-                with torch.no_grad():
-                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
-                diffs.append(orig_out - new_out)
+        for shot in range(n_shots):
+            shot_diffs = []
+            corr, bg_corr = attentions[chosen_class][shot]
+            for i in range(len(corr)):
+                for j in range(corr[i].shape[1]):
+                    new_input = corr[i].clone()
+                    new_input[:, j] = 0
+                    new_expl_input = [*corr[0:i], *[new_input], *corr[i+1:]]
+                    
+                    new_input_bg = bg_corr[i].clone()
+                    new_input_bg[:, j] = 0
+                    new_expl_input_bg = [*bg_corr[0:i], *[new_input_bg], *bg_corr[i+1:]]
+                    new_expl_input = [new_expl_input, new_expl_input_bg]
+                    
+                    with torch.no_grad():
+                        new_out , new_out_bg = self.pred_layer(*new_expl_input, image_size)
+                    new_out = new_out[:, :, selected_x, selected_y]
+                    new_out_bg = new_out_bg[:, :, selected_x, selected_y]
+                    
+                    diff = orig_out - new_out
+                    diff_bg = bg_orig_out - new_out_bg
+                    diff = ((torch.abs(diff) + torch.abs(diff_bg)) / 2).mean()
+                    shot_diffs.append(diff)
+            diffs.append(shot_diffs)
         
-        abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
+        diffs = list(zip(*diffs))
+        diffs = [torch.stack(diff, dim=0).mean() for diff in diffs]
+        
+        abl_attr = sum_scale(torch.stack(diffs))
         return abl_attr

@@ -102,7 +102,9 @@ class DMTNetwork(nn.Module):
 
         return {
             ResultDict.LOGITS: (logit_mask, bg_logit_mask, pred_mask),
-            ResultDict.ATTENTIONS: corr
+            ResultDict.ATTENTIONS: (corr, bg_corr),
+            ResultDict.QUERY_FEATS: query_feats,
+            ResultDict.SUPPORT_FEATS: (support_feats, bg_support_feats),
             }
                
     def get_index(self, i, j, k):

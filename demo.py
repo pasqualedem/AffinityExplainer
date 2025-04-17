@@ -130,23 +130,21 @@ def preprocess_attentions(attentions):
                 processed_level_attentions.append(level_attn)
             processed_attentions.append(processed_level_attentions)
         return processed_attentions
-        
-        return attentions
     elif model_name == "dmtnet":
         processed_attentions = []
         for class_attns in attentions:
             num_shots = len(class_attns)
-            st.write(class_attns, num_shots)
             level_attentions = [
                 torch.cat(
                     [
-                        class_attns[i][j]
+                        class_attns[i][0][j] + class_attns[i][1][j]
                         for i in range(num_shots)
                     ],
                     dim=-2
                 )
-                for j in range(len(class_attns[0]))
+                for j in range(len(class_attns[0][0]))
             ]
+            
             processed_level_attentions = []
             for level_attn in level_attentions:
                 level_attn = rearrange(level_attn, "b c h1 w1 nh2 w2 -> b c (h1 w1) (nh2 w2)")
@@ -156,18 +154,48 @@ def preprocess_attentions(attentions):
         return processed_attentions
                 
 
-
 def image_blend(image, heatmap):
     alpha = 0.8
     rgb_image = unnormalize(image)[0]
-    st.write("rgb_image", rgb_image)
-    st.write("heatmap", heatmap)
     blended_heatmap = heatmap * rgb_image
-    st.write("blended_heatmap", blended_heatmap)
     blended = blended_heatmap * alpha + rgb_image * (1 - alpha)
     blended = (blended * 255).type(torch.uint8)
-    st.write("blender", blended)
     return blended
+
+
+def plot_contributions(contributions, support_images, support_mask):
+        col1, col2, col3 = st.columns(3)
+        
+        blended_weighted_contrib = image_blend(support_images, contributions.clamp(0, 1))
+        
+        col1.write("Blended contribution")
+        col1.write(blended_weighted_contrib.rgb.fig)
+        col2.write("Contribution")
+        col2.write(contributions.chans(cmap="seismic").fig)
+        
+        sign_weighted_contrib = (contributions * support_mask)
+        
+        col3.write("Sign weighted contribution")
+        col3.write(sign_weighted_contrib.chans(cmap="seismic").fig)
+        
+        pos_contib = image_blend(support_images, sign_weighted_contrib.clamp(0, 1))
+        neg_contib = image_blend(support_images, (-sign_weighted_contrib).clamp(0, 1))
+        
+        col1, col2, col3 = st.columns(3)
+        col1.write("Positive contribution")
+        col1.write(sign_weighted_contrib.clamp(0, 1).chans(cmap="seismic").fig)
+        col2.write("Negative contribution")
+        col2.write((-sign_weighted_contrib).clamp(0, 1).chans(cmap="seismic").fig)
+        col3.write(f"Support Image")
+        col3.write(unnormalize(support_images).rgb.fig)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.write("Positive Blended contribution")
+        col1.write(pos_contib.rgb.fig)
+        col2.write("Negative Blended contribution")
+        col2.write(neg_contib.rgb.fig)
+        col3.write("Support Mask")
+        col3.write(support_mask.chans(cmap="seismic").fig)
 
 
 def explain(model, input_dict, result, num_classes):
@@ -197,8 +225,7 @@ def explain(model, input_dict, result, num_classes):
     
     st.write("Coordinates", (coords["x"], coords["y"]))
     for chosen_class in range(num_classes):
-
-        st.write(f"#### Class {chosen_class+1} interpretation")
+        st.write(f"### Class {chosen_class+1} interpretation")
         class_attns = attns[chosen_class]
         class_examples = flag_examples[:, :, chosen_class + 1]
         mask = masks[:, :, chosen_class+1, ::][class_examples]
@@ -228,41 +255,23 @@ def explain(model, input_dict, result, num_classes):
         contrib = contrib_seq.mean(dim=0)
         
         with st.spinner("Doing Feature Ablation..."):
-            cmask_contrib = model.feature_ablation(result, chosen_class, selected_x, selected_y, n_shots=class_shots)
+            cmask_contrib = model.feature_ablation(result, chosen_class, selected_x, selected_y, n_shots=class_shots, image_size=target_shape)
             if cmask_contrib is None:
                 cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
                 
         st.write(contrib_seq)
         with st.expander("Full masks"):
-            st.write(min_max_scale(contrib_seq).chans(cmap="viridis").fig)
-            
-        col1, col2, col3 = st.columns(3)
-    
-        col1.write(f"Mean contribution")
+            st.write(min_max_scale(contrib_seq).chans(cmap="seismic").fig)
+        
+        st.write("#### Mean Based Contribution")        
         contrib = min_max_scale(contrib)
-        col1.write(contrib)
-        col1.write((contrib*support_mask).chans(cmap="viridis").fig)
+        plot_contributions(contrib, support_images, support_mask)
+        # col1.write((contrib*support_mask).chans(cmap="seismic").fig)
         
-        
-        col2.write(f"Weighted contribution")
+        st.write(f"#### Weighted contribution")
         cmask_contrib = rearrange(cmask_contrib, "c -> c 1 1 1")
         weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=0))
-        blended_weighted_contrib = image_blend(support_images, weighted_contrib.clamp(0, 1))
-        col2.write(blended_weighted_contrib.rgb.fig)
-        col2.write(weighted_contrib.chans(cmap="viridis").fig)
-        sign_weighted_contrib = (weighted_contrib * support_mask)
-        col2.write(sign_weighted_contrib.chans(cmap="viridis").fig)
-        # col2.write(weighted_contrib.chans(cmap="viridis").fig)
-        pos_contib = image_blend(support_images, sign_weighted_contrib.clamp(0, 1))
-        neg_contib = image_blend(support_images, (-sign_weighted_contrib).clamp(0, 1))
-        col2.write(sign_weighted_contrib.clamp(0, 1).chans.fig)
-        col2.write((-sign_weighted_contrib).clamp(0, 1).chans.fig)
-        col2.write(pos_contib.rgb.fig)
-        col2.write(neg_contib.rgb.fig)
-        
-        col3.write(f"Support mask")
-        col3.write(support_mask)
-        col3.write(support_mask.chans(cmap="viridis").fig)
+        plot_contributions(weighted_contrib, support_images, support_mask)
         
         
 def feature_map_pca_heatmap(feature_map):

@@ -14,9 +14,7 @@ from fssweed.models.bam import build_bam
 from fssweed.models.hdmnet import build_hdmnet
 from fssweed.models.la.build_lam import build_lam, build_lam_vit_mae_b
 
-from .image_encoder import ImageEncoderViT
-from .build_encoder import ENCODERS, build_vit_b, build_vit_h, build_vit_l
-from .dcama import build_dcama, build_dcama_distiller, build_attn_distiller, build_weeddcama
+from .dcama import build_dcama
 from .dummy import build_dummy
 from .dmtnet import build_dmtnet
 from .patnet import build_patnet
@@ -39,7 +37,6 @@ def build_resnet50():
 
 MODEL_REGISTRY = {
     "dcama": build_dcama,
-    "weeddcama": build_weeddcama,
     "dummy": build_dummy,
     "deit": build_deit,
     "dmtnet": build_dmtnet,
@@ -48,8 +45,6 @@ MODEL_REGISTRY = {
     "hdmnet": build_hdmnet,
     "bam": build_bam,
     "la": build_lam_vit_mae_b,
-    # Encoders only
-    **ENCODERS,
 }
 
 def build_model(params):
