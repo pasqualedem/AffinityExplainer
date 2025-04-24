@@ -137,14 +137,14 @@ class DMTNetMultiClass(DMTNetwork):
         bg_logit_mask = F.interpolate(bg_logit_mask, image_size, mode='bilinear', align_corners=True)
         return logit_mask, bg_logit_mask
 
-    def feature_ablation(self, result, chosen_class, selected_x, selected_y, image_size, n_shots, **kwwargs):
+    def feature_ablation(self, result, chosen_class, mask, image_size, n_shots, **kwwargs):
         attentions = result[ResultDict.ATTENTIONS]
         with torch.no_grad():
             for shot in range(n_shots):
                 corr, bg_corr = attentions[chosen_class][shot]
                 orig_out, bg_orig_out = self.pred_layer(corr, bg_corr, image_size)
-                orig_out = orig_out[:, :, selected_x, selected_y]
-                bg_orig_out = bg_orig_out[:, :, selected_x, selected_y] 
+                orig_out = orig_out[:, :, mask[chosen_class]]
+                bg_orig_out = bg_orig_out[:, :, mask[chosen_class]] 
         diffs = []
         for shot in range(n_shots):
             shot_diffs = []
@@ -162,8 +162,8 @@ class DMTNetMultiClass(DMTNetwork):
                     
                     with torch.no_grad():
                         new_out , new_out_bg = self.pred_layer(*new_expl_input, image_size)
-                    new_out = new_out[:, :, selected_x, selected_y]
-                    new_out_bg = new_out_bg[:, :, selected_x, selected_y]
+                    new_out = new_out[:, :, mask[chosen_class]]
+                    new_out_bg = new_out_bg[:, :, mask[chosen_class]]
                     
                     diff = orig_out - new_out
                     diff_bg = bg_orig_out - new_out_bg

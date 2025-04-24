@@ -1,3 +1,4 @@
+import copy
 import lovely_tensors as lt
 from matplotlib import cm
 import streamlit as st
@@ -15,9 +16,10 @@ from torchmetrics import F1Score, MetricCollection
 from torchvision.transforms.functional import resize
 from sklearn.decomposition import PCA
 from streamlit_image_coordinates import streamlit_image_coordinates
-
-import numpy as np
 import torch
+
+import plotly.express as px
+import plotly.graph_objects as go
 
 from fssweed.utils.segmentation import create_rgb_segmentation, unnormalize
 from fssweed.utils.utils import (
@@ -37,6 +39,7 @@ from fssweed.data.utils import (
 )
 from fssweed.substitution import Substitutor
 import matplotlib.pyplot as plt
+from torchmetrics.classification import MulticlassJaccardIndex
 from tqdm import tqdm
 
 
@@ -109,6 +112,12 @@ def get_data(n_ways, n_shots, image_size):
         num_processes=1,
     )
     return val[PASCAL_NAME]
+
+def reset():
+    st.session_state.pop("result", None)
+    st.session_state.pop("coords", None)
+    st.session_state.pop("explanation_mask", None)
+    st.session_state.pop("explanations", None)
     
     
 @st.cache_data
@@ -196,6 +205,52 @@ def plot_contributions(contributions, support_images, support_mask):
         col2.write(neg_contib.rgb.fig)
         col3.write("Support Mask")
         col3.write(support_mask.chans(cmap="seismic").fig)
+        
+        
+def create_perturbed_input(batched_input, explanation, positive_threshold=0.5, negative_threshold=0.0, hard=False):
+    """
+    Create a perturbed input by adding the contribution to the original input.
+    
+    Args:
+        batched_input (dict): The original input batch.
+        explanation (torch.Tensor): The explanation image tensor.
+        
+    Returns:
+        perturbed_input (dict): The perturbed input batch.
+    """
+    
+    background = torch.zeros_like(explanation)[:, :, :1]
+    explanation = torch.cat([background, explanation], dim=2)
+
+    B, M, C, _, _ = explanation.shape    
+    masks = batched_input[BatchKeys.PROMPT_MASKS]
+    
+    positive_mask_out = explanation < positive_threshold
+    negative_mask_out = explanation > negative_threshold
+
+    mask_out = positive_mask_out.logical_and(negative_mask_out)
+    resized_mask_out = F.interpolate(
+        rearrange(mask_out.float(), "b m c h w -> b (m c) h w"),
+        size=masks.shape[-2:],
+        mode="nearest",
+    ).bool()
+    resized_mask_out = rearrange(resized_mask_out, "b (m c) h w -> b m c h w", m=M, c=C)
+    
+    masks = masks.clone()
+    masks = masks * resized_mask_out
+    
+    if hard:
+        prompt_images = batched_input[BatchKeys.IMAGES][:, 1:]
+        prompt_images = prompt_images * mask_out
+        images = torch.cat([batched_input[BatchKeys.IMAGES][:, 0:1], prompt_images], dim=1)
+    else:
+        images = batched_input[BatchKeys.IMAGES]
+    
+    # Create a new batch with the perturbed input
+    perturbed_input = copy.deepcopy(batched_input)
+    perturbed_input[BatchKeys.PROMPT_MASKS] = masks
+    perturbed_input[BatchKeys.IMAGES] = images
+    return perturbed_input, resized_mask_out
 
 
 def explain(model, input_dict, result, num_classes):
@@ -205,7 +260,7 @@ def explain(model, input_dict, result, num_classes):
     target_image = input_dict[BatchKeys.IMAGES][0, 0]
     support_images = input_dict[BatchKeys.IMAGES][0, 1:]
     support_images = rearrange(support_images, "n c h w -> c h (n w)")
-    
+
     target_shape = input_dict[BatchKeys.IMAGES][:, 0].shape[2:]
     st.write(target_shape)
     
@@ -213,66 +268,126 @@ def explain(model, input_dict, result, num_classes):
     coords = streamlit_image_coordinates(
         (unnormalize(target_image.unsqueeze(0))[0]*255).numpy().transpose(1, 2, 0).astype(np.uint8),
     )
-    
+    explanation_mask = None
+        
     if coords:
         st.session_state["coords"] = coords
+    if st.button("Overall Explanation"):
+        logits = result[ResultDict.LOGITS]
+        logits = F.interpolate(
+            logits,
+            size=target_shape,
+            mode="bilinear",
+            align_corners=False,
+            antialias=False,
+        ).argmax(dim=1)
+        st.session_state["explanation_mask"] = F.one_hot(logits, num_classes=num_classes+1).permute(0, 3, 1, 2)[0].bool(), "Overall"
+        st.session_state["coords"] = None
+        
     if st.session_state.get("coords") is not None:
-        coords = st.session_state["coords"]
+        coords = st.session_state["coords"] 
+        st.write("Coordinates", (coords["x"], coords["y"]))
         selected_x = coords["x"]
         selected_y = coords["y"]
-    else:
+        explanation_mask = torch.zeros((num_classes+1, *target_image.shape[-2:])).bool()
+        explanation_mask[:, selected_x, selected_y] = True
+        st.session_state["explanation_mask"] = explanation_mask, "Point"
+        
+    if st.session_state.get("explanation_mask") is None:
         return
     
-    st.write("Coordinates", (coords["x"], coords["y"]))
-    for chosen_class in range(num_classes):
-        st.write(f"### Class {chosen_class+1} interpretation")
-        class_attns = attns[chosen_class]
-        class_examples = flag_examples[:, :, chosen_class + 1]
-        mask = masks[:, :, chosen_class+1, ::][class_examples]
-        class_shots = mask.shape[0]
-        
-        support_mask = resize(mask, target_shape, interpolation=TvT.InterpolationMode.NEAREST).float()
-        support_mask = rearrange(support_mask, "n h w -> h (n w)")
-        support_mask = 2*support_mask - 1
-        # support_mask = TvT.gaussian_blur(support_mask, (9,9), sigma=5)
-        st.write("Support mask", support_mask)
+    explanation_mask, explanation_type = st.session_state["explanation_mask"]
+    if explanation_type == "Point":
+        st.write(f"Point explanation, coords: {selected_x}, {selected_y}")
+    elif explanation_type == "Overall":
+        st.write(f"Overall explanation")
+    
+    explanations = []
+    if st.button("Calculate explanation"):
+        for chosen_class in range(num_classes):
+            class_attns = attns[chosen_class]
+            class_examples = flag_examples[:, :, chosen_class + 1]
+            mask = masks[:, :, chosen_class+1, ::][class_examples]
+            class_shots = mask.shape[0]
+            
+            support_mask = resize(mask, target_shape, interpolation=TvT.InterpolationMode.NEAREST).float()
+            support_mask = rearrange(support_mask, "n h w -> h (n w)")
+            support_mask = 2*support_mask - 1
 
-        level_contributions = []
-        for level_attn in class_attns:
+            level_contributions = []
+            level_predictions = []
+            for level_attn in class_attns:
 
-            hw = level_attn.shape[-2]
-            h = w = int(hw ** 0.5)
-            level_attn = F.softmax(level_attn, dim=-1)
-            level_attn = rearrange(level_attn, "b (h1 w1) (n h2 w2) -> (b h2 w2 n) h1 w1", n=class_shots, h1=h, w1=w, h2=h, w2=w)
-            level_attn = resize(level_attn, target_shape)
-            level_attn = level_attn[:, selected_y, selected_x]
-            level_attn = rearrange(level_attn, "(b h2 w2 n) -> (b n) h2 w2", h2=h, w2=w, n=class_shots)
-            resized_level_attn = resize(level_attn, target_shape, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
-            resized_level_attn = rearrange(resized_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
-            level_contributions.append(resized_level_attn)
+                hw = level_attn.shape[-2]
+                h = w = int(hw ** 0.5)
+                level_attn = F.softmax(level_attn, dim=-1)
+                mask_level = rearrange(resize(mask, target_shape, interpolation=TvT.InterpolationMode.NEAREST), "n h w -> h (n w)")
+                transposed_level_attn = rearrange(level_attn, "b (hq wq) (n hs ws) -> (b hs ws n) hq wq", n=class_shots, hs=h, ws=w, hq=h, wq=w)
+                reshaped_level_attn = rearrange(level_attn, "b (hq wq) (n hs ws) -> (b hq wq n) hs ws", n=class_shots, hs=h, ws=w, hq=h, wq=w)
+                transposed_level_attn = resize(transposed_level_attn, target_shape)
+                reshaped_level_attn = resize(reshaped_level_attn, target_shape)
+                normalized_level_attn = transposed_level_attn / (transposed_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                reshaped_level_attn = reshaped_level_attn / (reshaped_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                reshaped_level_attn = rearrange(reshaped_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
+                st.write("reshaped_level_attn", reshaped_level_attn)
+                st.write("mask_level", mask_level)
+                level_prediction = rearrange((reshaped_level_attn * mask_level).sum(dim=(-1, -2)), "(h w) -> 1 h w", h=h, w=w)
+                # level_prediction = resize(level_prediction, target_shape, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
+                level_contribution = normalized_level_attn[:, explanation_mask[chosen_class+1]].mean(dim=1)
+                level_contribution = rearrange(level_contribution, "(b hs ws n) -> (b n) hs ws", hs=h, ws=w, n=class_shots)
+                resized_level_contribution = resize(level_contribution, target_shape, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
+                resized_level_contribution = rearrange(resized_level_contribution, "(b n) h w -> b h (n w)", n=class_shots)
+                normalized_level_contribution = resized_level_contribution / (resized_level_contribution.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                level_contributions.append(normalized_level_contribution)
+                level_predictions.append(level_prediction)
 
-        contrib_seq = torch.stack(level_contributions)
-        contrib = contrib_seq.mean(dim=0)
-        
-        with st.spinner("Doing Feature Ablation..."):
-            cmask_contrib = model.feature_ablation(result, chosen_class, selected_x, selected_y, n_shots=class_shots, image_size=target_shape)
-            if cmask_contrib is None:
-                cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
+            contrib_seq = torch.stack(level_contributions)
+            mean_contrib = contrib_seq.mean(dim=0)
+                       
+            with st.spinner("Doing Feature Ablation..."):
+                cmask_contrib = model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, image_size=target_shape)
+                if cmask_contrib is None:
+                    cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
+                    
+            mean_contrib = min_max_scale(mean_contrib)
+            
+            cmask_contrib = rearrange(cmask_contrib, "c -> c 1 1 1")
+            weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=0))
+                    
+            explanations.append((mean_contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots))
+            
+        st.session_state["explanations"] = explanations
                 
-        st.write(contrib_seq)
-        with st.expander("Full masks"):
-            st.write(min_max_scale(contrib_seq).chans(cmap="seismic").fig)
-        
-        st.write("#### Mean Based Contribution")        
-        contrib = min_max_scale(contrib)
-        plot_contributions(contrib, support_images, support_mask)
-        # col1.write((contrib*support_mask).chans(cmap="seismic").fig)
-        
-        st.write(f"#### Weighted contribution")
-        cmask_contrib = rearrange(cmask_contrib, "c -> c 1 1 1")
-        weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=0))
-        plot_contributions(weighted_contrib, support_images, support_mask)
-        
+    if "explanations" in st.session_state:
+        for chosen_class in range(num_classes):
+            st.write(f"### Class {chosen_class+1} interpretation")
+            # with st.expander("Full masks"):
+            #     st.write(min_max_scale(contrib_seq).chans(cmap="seismic").fig)
+                
+            contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots = st.session_state["explanations"][chosen_class]
+            
+            with st.expander("Level predictions"):
+                cols = st.columns(5)
+                st.write("Level predictions")
+                for i, level_predictions in enumerate(level_predictions):
+                    with cols[i%5]:
+                        st.write(f"Level {i+1}")
+                        st.write(level_predictions.chans(cmap="seismic", scale=8).fig)
+            
+            with st.expander("Level contrubutions"):
+                st.write(contrib_seq.chans(cmap="seismic").fig)
+            
+            st.write("#### Mean Based Contribution")        
+            plot_contributions(contrib, support_images, support_mask)
+            # col1.write((contrib*support_mask).chans(cmap="seismic").fig)
+            
+            st.write(f"#### Weighted contribution")
+            plot_contributions(weighted_contrib, support_images, support_mask)
+
+        return torch.stack([rearrange(explanation[1], "b h (n w) -> b n h w", n=class_shots) for explanation in st.session_state["explanations"]], dim=2)
+    
+    return None
+
         
 def feature_map_pca_heatmap(feature_map):
     """
@@ -436,8 +551,7 @@ def main():
         st.session_state["batch"] = next(st.session_state["iterator"])
     if st.button("Next"):
         st.session_state["batch"] = next(st.session_state["iterator"])
-        st.session_state.pop("result", None)
-        st.session_state.pop("coords", None)
+        reset()
     batch = st.session_state["batch"]
     
     batch, dataset_name  = batch
@@ -456,12 +570,10 @@ def main():
     
     st.write("Query Image")
     st.write(unnormalize(input_dict[BatchKeys.IMAGES][:, 0]).rgb.fig)
-    st.write(data.dataset.datasets[PASCAL_NAME].n_shots)
     
     input_dict = to_device(input_dict, device)
     num_classes = input_dict[BatchKeys.PROMPT_MASKS].shape[2] - 1
     gt = to_device(gt, device)
-    st.write(gt)
     
     st.write(input_dict)
     
@@ -486,7 +598,72 @@ def main():
         gt_col.write("Ground Truth")
         gt_col.write(create_rgb_segmentation(gt, num_classes=num_classes+1).rgb.fig)
         
-        explain(model, input_dict, result, num_classes)
+        explanation = explain(model, input_dict, result, num_classes)
+        
+        if explanation is not None:
+            st.write("### Fidelity Score")
+            
+            st.write("#### Explanation distribution")
+            st.write(explanation.plt.fig)
+            
+            st.write("Explanation summary: ", explanation)
+            explanation_np = rearrange(explanation, "1 m c h w -> (h) (m c w)").cpu().numpy()  # Ensure explanation is converted to numpy
+            fig = go.Figure(data=go.Heatmap(
+                z=explanation_np[::-1],  # Flip vertically to avoid upside-down visualization
+                colorscale='Viridis',   # or 'Hot', 'Blues', 'Greys', etc.
+                zmin=0, zmax=1          # Ensure color scale is bounded to [0, 1]
+            ))
+            st.plotly_chart(fig)
+            
+            positive_threshold = st.slider("Positive Threshold", 0.0, 1.0, 0.8)
+            negative_threshold = st.slider("Negative Threshold", 0.0, 1.0, 0.2)
+            hard = st.checkbox("Hard", value=False)
+            
+            perturbed_dict, cutout_explanation = create_perturbed_input(input_dict, explanation, positive_threshold=positive_threshold, negative_threshold=negative_threshold, hard=hard)
+
+            st.write("#### Cutout explanation")
+            st.write(cutout_explanation[0, :, 1:].chans(cmap="binary").fig)
+
+            col1, col2 = st.columns(2)
+            
+            col1.write("#### Support Images")
+            col1.write(unnormalize(perturbed_dict[BatchKeys.IMAGES][:, 1:]).rgb.fig)
+            col2.write("#### Perturbed Mask")
+            col2.write(create_rgb_segmentation(perturbed_dict[BatchKeys.PROMPT_MASKS][0], num_classes=3).rgb.fig)
+            
+            with torch.no_grad():
+                perturbed_result = model(perturbed_dict)
+                
+            logits = result[ResultDict.LOGITS]
+            pred = torch.argmax(logits, dim=1)
+            perturbed_logits = perturbed_result[ResultDict.LOGITS] 
+            perturbed_pred = torch.argmax(perturbed_logits, dim=1)
+            
+            diff_pred = 1 - (pred != perturbed_pred).float()
+            
+            col1, col2, col3 = st.columns(3)
+            col1.write("#### Original Prediction")
+            col1.write(create_rgb_segmentation(result[ResultDict.LOGITS], num_classes=num_classes+1).rgb.fig)
+            col2.write("#### Perturbed Prediction")
+            col2.write(create_rgb_segmentation(perturbed_result[ResultDict.LOGITS], num_classes=num_classes+1).rgb.fig)
+            col3.write("#### Difference Prediction")
+            col3.write(diff_pred[0].chans(cmap="binary").fig)
+            
+            # Calculate miou between original and perturbed predictions
+            miou = MulticlassJaccardIndex(num_classes=num_classes+1, ignore_index=-100, average="none")
+            miou.update(perturbed_pred, pred)
+            st.write("#### mIoU Fidelity Score")
+            st.write(miou.compute()[1:].mean().item())
+            
+            st.write("#### Original mIoU")
+            miou = MulticlassJaccardIndex(num_classes=num_classes+1, ignore_index=-100, average="none")
+            miou.update(pred, gt)
+            st.write(miou.compute()[1:].mean().item())
+            st.write("#### Perturbed mIoU")
+            miou = MulticlassJaccardIndex(num_classes=num_classes+1, ignore_index=-100, average="none")
+            miou.update(perturbed_pred, gt)
+            st.write(miou.compute()[1:].mean().item())
+
     
 if __name__ == "__main__":
     main()

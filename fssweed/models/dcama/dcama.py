@@ -639,12 +639,12 @@ class DCAMAMultiClass(DCAMA):
         return logit_mask
 
 
-    def feature_ablation(self, result, chosen_class, selected_x, selected_y, n_shots=None):
+    def feature_ablation(self, result, chosen_class, mask, n_shots=None, image_size=None):
         query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
         support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
         coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
         with torch.no_grad():
-            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, mask[chosen_class]].mean(dim=2)
         diffs = []
         for i in range(len(coarse_masks)):
             for j in range(coarse_masks[i].shape[1]):
@@ -652,8 +652,8 @@ class DCAMAMultiClass(DCAMA):
                 new_input[:, j] = 0
                 new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
                 with torch.no_grad():
-                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, selected_x, selected_y]
+                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, mask[chosen_class]].mean(dim=2)
                 diffs.append(orig_out - new_out)
         
-        abl_attr = sum_scale(torch.stack([torch.abs(diff[0, 1]) for diff in diffs]))
+        abl_attr = sum_scale(torch.cat([torch.abs(diff[:, 1]) for diff in diffs]))
         return abl_attr
