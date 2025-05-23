@@ -192,7 +192,7 @@ def rearrange_classes(classes: List[Dict[int, int]]) -> Dict[int, int]:
 
 
 def annotations_to_tensor(
-    prompts_processor, annotations: list, img_sizes: list, prompt_type: PromptType
+    prompts_processor, annotations: list, img_sizes: list, prompt_type: PromptType, mask_size: int = 256
 ) -> torch.Tensor:
     """Convert a list of annotations to a tensor.
 
@@ -212,7 +212,7 @@ def annotations_to_tensor(
         max_annotations = get_max_annotations(annotations)
         tensor_shape = (n, c, max_annotations, 4)
     elif prompt_type == PromptType.MASK:
-        tensor_shape = (n, c, 256, 256)
+        tensor_shape = (n, c, mask_size, mask_size)
     elif prompt_type == PromptType.POINT:
         max_annotations = get_max_annotations(annotations)
         tensor_shape = (n, c, max_annotations, 2)
@@ -227,7 +227,7 @@ def annotations_to_tensor(
     if prompt_type == PromptType.MASK:
         for i, annotation in enumerate(annotations):
             for j, cat_id in enumerate(annotation):
-                mask = prompts_processor.apply_masks(annotation[cat_id])
+                mask = prompts_processor.apply_masks(annotation[cat_id], mask_size=mask_size)
                 tensor_mask = torch.tensor(mask)
                 tensor[i, j, :] = tensor_mask
                 flag[i, j] = 1 if torch.sum(tensor_mask) > 0 else 0

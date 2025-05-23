@@ -183,25 +183,27 @@ class PromptsProcessor:
         boxes = self.apply_coords(boxes.reshape(-1, 2, 2), original_size)
         return boxes.reshape(-1, 4)
 
-    def apply_masks(self, masks: np.ndarray):
+    def apply_masks(self, masks: np.ndarray, mask_size=None):
         # take the binary OR over the masks and resize to new size
+        mask_size = mask_size or self.masks_side_length
+        
         if len(masks) == 0:
             return torch.zeros(
-                (self.masks_side_length, self.masks_side_length), dtype=torch.uint8
+                (mask_size, mask_size), dtype=torch.uint8
             )
 
         mask = torch.as_tensor(np.logical_or.reduce(masks).astype(np.uint8)).unsqueeze(
             0
         )
         if self.custom_preprocess:
-            new_h, new_w = get_preprocess_shape(masks[0].shape[0], masks[0].shape[1], self.long_side_length)
+            new_h, new_w = mask_size(masks[0].shape[0], masks[0].shape[1], self.long_side_length)
             mask = resize(mask, (new_h, new_w), interpolation=Image.NEAREST)
             padw = self.long_side_length - new_w
             padh = self.long_side_length - new_h
             mask = F.pad(mask, (0, padw, 0, padh))
         mask = resize(
             mask,
-            (self.masks_side_length, self.masks_side_length),
+            (mask_size, mask_size),
             interpolation=Image.NEAREST,
         )
         return mask

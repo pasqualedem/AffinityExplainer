@@ -563,7 +563,7 @@ class DCAMAMultiClass(DCAMA):
         self.image_size = image_size
         super().__init__(backbone, pretrained_path, use_original_imgsize, concat_support=concat_support, train_backbone=train_backbone, pe=pe, voting=voting)
 
-    def forward(self, x):
+    def forward(self, x, postprocess=True):
 
         masks = preprocess_masks(
             x[BatchKeys.PROMPT_MASKS], x[BatchKeys.DIMS]
@@ -622,7 +622,8 @@ class DCAMAMultiClass(DCAMA):
         bg_logits = torch.gather(bg_logits, 1, bg_positions.unsqueeze(1))
         logits = torch.cat([bg_logits, fg_logits], dim=1)
 
-        logits = postprocess_masks(logits, x["dims"])
+        if postprocess:
+            logits = postprocess_masks(logits, x["dims"])
 
         return {
             **results,

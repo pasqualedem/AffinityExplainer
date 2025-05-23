@@ -105,7 +105,7 @@ class Pascal5iDataset(PascalDataset):
             masks, classes, img_sizes = self._get_prompts(images_data, cat_ids, with_random_choice=False)
 
         masks, flag_masks = utils.annotations_to_tensor(
-            self.prompts_processor, masks, img_sizes, PromptType.MASK
+            self.prompts_processor, masks, img_sizes, PromptType.MASK, mask_size=images.shape[-1]
         )
 
         if ground_truths is None:
