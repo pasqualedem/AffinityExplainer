@@ -21,23 +21,23 @@ import torch
 import plotly.express as px
 import plotly.graph_objects as go
 
-from fssweed.explainer import calculate_explanations
-from fssweed.utils.segmentation import create_rgb_segmentation, unnormalize
-from fssweed.utils.utils import (
+from affex.explainer import calculate_explanations
+from affex.utils.segmentation import create_rgb_segmentation, unnormalize
+from affex.utils.utils import (
     ResultDict,
     StrEnum,
     torch_dict_load,
     torch_dict_save,
     to_device,
 )
-from fssweed.models import SUPPORTED_MODELS, build_model_preconfigured
-from fssweed.data import get_dataloaders, get_preprocessing, get_testloaders
-from fssweed.data.utils import (
+from affex.models import SUPPORTED_MODELS, build_model_preconfigured
+from affex.data import get_dataloaders, get_preprocessing, get_testloaders
+from affex.data.utils import (
     AnnFileKeys,
     PromptType,
     BatchKeys,
 )
-from fssweed.substitution import Substitutor
+from affex.substitution import Substitutor
 import matplotlib.pyplot as plt
 from torchmetrics.classification import MulticlassJaccardIndex
 from tqdm import tqdm
