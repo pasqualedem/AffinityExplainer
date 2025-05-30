@@ -1,0 +1,31 @@
+grid: Test
+
+parameters:
+  model: [dcama]
+  explainer:
+    name: [affinity]
+
+  explanation_masking: ["logits"]
+
+  metric:
+    step: [1000]
+    substrate_fn: [zero]
+
+  dataset: # parameters depending on the class you defined for the dataset
+    datasets:
+      val_pascal5i_N1K1:
+        name: [pascal]
+        data_dir: &instance_dir [data/pascal]
+        split: ["val"]
+        val_fold_idx: [0]
+        n_folds: [4]
+        n_shots: [1]
+        n_ways: [1]
+        do_subsample: [False]
+    common:
+      remove_small_annotations: [True]
+      ignore_borders: [True]
+      custom_preprocess: [False]
+  dataloader:
+    num_workers: [16]
+    batch_size: [1]

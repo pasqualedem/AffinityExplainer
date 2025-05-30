@@ -48,7 +48,7 @@ class DMTNetMultiClass(DMTNetwork):
         # )
         return rearrange(masks, "(b n c) h w -> b n c h w", b=B, n=N)
 
-    def forward(self, x):
+    def forward(self, x, postprocess=True):
 
         masks = self._preprocess_masks(x[BatchKeys.PROMPT_MASKS], x[BatchKeys.DIMS])
         assert masks.shape[0] == 1, "Only tested with batch size = 1"
@@ -92,7 +92,8 @@ class DMTNetMultiClass(DMTNetwork):
             preds = (votes.argmax(dim=1)+1) * (votes > 0.5).max(dim=1).values
             logits = rearrange(F.one_hot(preds, num_classes=len(voting_masks)+1), "b h w c -> b c h w").float()
             
-        logits = self.postprocess_masks(logits, x["dims"])
+        if postprocess:
+            logits = self.postprocess_masks(logits, x["dims"])
 
         return {
             ResultDict.LOGITS: logits,

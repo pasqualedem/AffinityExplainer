@@ -1,13 +1,15 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from einops import rearrange
-from affex.data.utils import BatchKeys
-from affex.utils.utils import ResultDict, to_device
 from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
+from torchmetrics import Metric
 
-import torch.nn.functional as F
+from affex.data.utils import BatchKeys
+from affex.utils.utils import ResultDict, to_device
+
 
 def gkern(klen, nsig):
     """Returns a Gaussian kernel array.
@@ -28,7 +30,32 @@ def auc(arr):
     """Returns normalized Area Under Curve of the array."""
     return (arr.sum() - arr[0] / 2 - arr[-1] / 2) / (arr.shape[0] - 1)
 
-class FSSCausalMetric():
+
+def get_substrate_fn(substrate, kernel_size=3, sigma=1.0):
+    r"""Returns a function that maps old pixels to new pixels.
+
+    Args:
+        substrate (str): 'blur', 'gaussian', 'random', 'zero'.
+        image_size (tuple): size of the image (H, W).
+        kernel_size (int): size of the kernel for blurring.
+        sigma (float): standard deviation for gaussian blurring.
+
+    Returns:
+        function: a function that takes an image tensor and returns a new image tensor.
+    """
+    if substrate == 'blur':
+        kernel = gkern(kernel_size, sigma)
+        return lambda x: F.conv2d(x, kernel, padding=kernel_size//2)
+    elif substrate == 'gaussian':
+        return lambda x: F.gaussian_blur(x, kernel_size=kernel_size, sigma=sigma)
+    elif substrate == 'random':
+        return lambda x: torch.rand_like(x)
+    elif substrate == 'zero':
+        return lambda x: torch.zeros_like(x)
+    else:
+        raise ValueError(f"Unknown substrate type: {substrate}")
+
+class FSSCausalMetric(Metric):
 
     def __init__(self, model, mode, step, substrate_fn):
         r"""Create deletion/insertion metric instance.
@@ -39,16 +66,19 @@ class FSSCausalMetric():
             step (int): number of pixels modified per one iteration.
             substrate_fn (func): a mapping from old pixels to new pixels.
         """
+        super().__init__()
         assert mode in ['del', 'ins']
         self.model = model
         self.mode = mode
         self.step = step
-        self.substrate_fn = substrate_fn
+        self.substrate_fn = get_substrate_fn(substrate_fn)
         self.reduce = lambda x : torch.mean(x, dim=-1)
         
         self.xauc = None
         self.scores = None
         self.n_steps = None
+        
+        self.results = []
         
     def get_start_finish(self, input_dict):
         images = input_dict[BatchKeys.IMAGES]
@@ -124,7 +154,7 @@ class FSSCausalMetric():
         r"""Non-interactive evaluation: returns final xAUC and all scores."""
         for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False):
             pass
-        return self.xauc, self.scores
+        return {"auc": self.xauc, "scores": self.scores}
 
 
     def evaluate_interactive(self, input_dict, explanation, explanation_mask):
@@ -177,4 +207,33 @@ class FSSCausalMetric():
             if interactive:
                 yield start, i, scores[:i+1]
         self.xauc = auc(scores.mean(1))
-        self.scores = scores 
+        self.scores = scores
+        
+    def update(self, input_dict, explanation, explanation_mask):
+        r"""Update metric with new batch of images.
+
+        Args:
+            input_dict (dict): dictionary containing image tensor, image masks
+            exp_batch (np.ndarray): saliency map over the support iamges
+            explanation_mask (torch.tensor): mask over the query image
+        """
+        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False):
+            pass
+        self.results.append((self.xauc, self.scores))
+        
+    def compute(self):
+        r"""Compute final xAUC and scores."""
+        if not self.results:
+            raise ValueError("No results to compute.")
+        xaucs, scores = zip(*self.results)
+        self.xauc = np.mean(xaucs)
+        self.scores = np.mean(scores, axis=0)
+        return {"auc": self.xauc, "scores": self.scores}
+    
+    def reset(self):
+        r"""Reset the metric."""
+        self.xauc = None
+        self.scores = None
+        self.n_steps = None
+        self.results = []
+    

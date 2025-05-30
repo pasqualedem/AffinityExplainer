@@ -64,15 +64,15 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes):
 
     datasets_params = dataset_args.get("datasets")
     common_params = dataset_args.get("common", {})
-    possible_batch_example_nums = dataloader_args.pop("possible_batch_example_nums")
+    possible_batch_example_nums = dataloader_args.pop("possible_batch_example_nums", None)
     val_possible_batch_example_nums = dataloader_args.pop(
         "val_possible_batch_example_nums", possible_batch_example_nums
     )
+    if "batch_size" in dataloader_args:
+        batch_size = dataloader_args["batch_size"]
+        possible_batch_example_nums = [[batch_size]]
+        val_possible_batch_example_nums = [[batch_size]]
 
-    prompt_types = dataloader_args.pop("prompt_types", None)
-    prompt_choice_level = dataloader_args.pop("prompt_choice_level", "batch")
-
-    val_prompt_types = dataloader_args.pop("val_prompt_types", prompt_types)
     num_steps = dataloader_args.pop("num_steps", None)
 
     val_datasets_params = {
@@ -96,8 +96,6 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes):
             train_dataset,
             possible_batch_example_nums=possible_batch_example_nums,
             num_processes=num_processes,
-            prompt_types=prompt_types,
-            prompt_choice_level=prompt_choice_level,
             shuffle=True,
             num_steps=num_steps,
         )
@@ -123,7 +121,6 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes):
                 val_dataset,
                 possible_batch_example_nums=val_possible_batch_example_nums,
                 num_processes=num_processes,
-                prompt_types=val_prompt_types,
             )
             val_dataloader = DataLoader(
                 dataset=val_dataset,
