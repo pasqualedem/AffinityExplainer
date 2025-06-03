@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 import torch
 import itertools
 
@@ -325,53 +326,59 @@ def get_batch_metadata(
     dataset_len,
     possible_batch_example_nums,
     num_processes=1,
+    metadata_df=None,
 ):
     """
     Returns a list of number of examples per batch and a list of batch sizes
     such that the total number of examples is `batch_size * max_num_examples`
     """
-    examples_nums = []
-    batch_sizes = []
-    num_classes = []
-    remaining_images = dataset_len // num_processes
-    while remaining_images > 0:
-        res = random.choice(possible_batch_example_nums)
-        num_class = None
-        if len(res) == 1:
-            cur_batch_size = res[0]
-            examples_num = None
-        elif len(res) == 2:
-            cur_batch_size, examples_num = res
-        elif len(res) == 3:
-            cur_batch_size, num_class, examples_num = res
-        else:
-            raise ValueError("Invalid number of elements in the batch metadata.")
-        if cur_batch_size > remaining_images:
-            cur_batch_size = remaining_images
-        examples_nums.append(examples_num)
-        batch_sizes.append(cur_batch_size)
-        if num_class is not None:
-            num_classes.append(num_class)
-        remaining_images -= cur_batch_size
+    if metadata_df is not None:
+        batch_sizes = metadata_df[utils.BatchKeys.IMAGE_IDS.value].apply(len).to_list()
+        batch_metadata = metadata_df.to_dict(orient="list")
+        batch_metadata = {k: [x for l in v for x in l] for k, v in batch_metadata.items()}
+    else:
+        examples_nums = []
+        batch_sizes = []
+        num_classes = []
+        remaining_images = dataset_len // num_processes
+        while remaining_images > 0:
+            res = random.choice(possible_batch_example_nums)
+            num_class = None
+            if len(res) == 1:
+                cur_batch_size = res[0]
+                examples_num = None
+            elif len(res) == 2:
+                cur_batch_size, examples_num = res
+            elif len(res) == 3:
+                cur_batch_size, num_class, examples_num = res
+            else:
+                raise ValueError("Invalid number of elements in the batch metadata.")
+            if cur_batch_size > remaining_images:
+                cur_batch_size = remaining_images
+            examples_nums.append(examples_num)
+            batch_sizes.append(cur_batch_size)
+            if num_class is not None:
+                num_classes.append(num_class)
+            remaining_images -= cur_batch_size
 
-    batch_sizes = [
-        val for tup in zip(*[batch_sizes for i in range(num_processes)]) for val in tup
-    ]
-    examples_nums = [
-        val
-        for tup in zip(*[examples_nums for i in range(num_processes)])
-        for val in tup
-    ]
-    batch_metadata = {
-        utils.BatchMetadataKeys.NUM_EXAMPLES: examples_nums,
-    }
-    if len(num_classes) > 0:
-        num_classes = [
+        batch_sizes = [
+            val for tup in zip(*[batch_sizes for i in range(num_processes)]) for val in tup
+        ]
+        examples_nums = [
             val
-            for tup in zip(*[num_classes for i in range(num_processes)])
+            for tup in zip(*[examples_nums for i in range(num_processes)])
             for val in tup
         ]
-        batch_metadata[utils.BatchMetadataKeys.NUM_CLASSES] = num_classes
+        batch_metadata = {
+            utils.BatchMetadataKeys.NUM_EXAMPLES: examples_nums,
+        }
+        if len(num_classes) > 0:
+            num_classes = [
+                val
+                for tup in zip(*[num_classes for i in range(num_processes)])
+                for val in tup
+            ]
+            batch_metadata[utils.BatchMetadataKeys.NUM_CLASSES] = num_classes
 
     return batch_sizes, batch_metadata
 
@@ -406,6 +413,7 @@ class VariableBatchSampler(BatchSampler):
         shuffle=False,
         num_processes=1,
         num_steps=None,
+        metadata_df=None,
     ):
         self.data_source = data_source
 
@@ -413,6 +421,7 @@ class VariableBatchSampler(BatchSampler):
             len(data_source),
             possible_batch_example_nums,
             num_processes=num_processes,
+            metadata_df=metadata_df,
         )
         self.num_processes = num_processes
         if num_steps is not None:

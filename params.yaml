@@ -11,6 +11,8 @@ parameters:
     step: [1000]
     substrate_fn: [zero]
 
+  num_processes: [2]
+
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
       val_pascal5i_N1K1:
@@ -19,7 +21,7 @@ parameters:
         split: ["val"]
         val_fold_idx: [0]
         n_folds: [4]
-        n_shots: [1]
+        n_shots: [5]
         n_ways: [1]
         do_subsample: [False]
     common:

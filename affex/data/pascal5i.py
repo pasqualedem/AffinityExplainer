@@ -75,29 +75,35 @@ class Pascal5iDataset(PascalDataset):
             raise NotImplementedError("Pascal5iDataset does not support training")
         elif self.split == Pascal5iSplit.VAL:
             idx, metadata = idx_batchmetadata
-            intended_classes = [[] for _ in range(self.n_ways * self.n_shots + 1)]
-            if self.n_ways == 1:
-                cat_ids = [-1, random.choice(list(self.categories.keys()))]
-                images_data = random.sample(
-                    list(self.cat2img[cat_ids[1]]), self.n_shots + 1
-                )
-                intended_classes[0].append(cat_ids[1])
-                for i in range(1, self.n_shots + 1):
-                    intended_classes[i].append(cat_ids[1])
+            if BatchKeys.IMAGE_IDS in metadata:
+                cat_ids = metadata[BatchKeys.CLASSES]
+                cat_ids = [-1] + sorted(set().union(*cat_ids))
+                images_data = metadata[BatchKeys.IMAGE_IDS]
+                intended_classes = None
             else:
-                cat_ids = random.sample(list(self.categories.keys()), self.n_ways)
-                query_image_name = random.choice(list(self.cat2img[cat_ids[0]]))
-                intended_classes[0].append(cat_ids[0])
-                
-                images_data = [query_image_name]
-                for cat_id in cat_ids:
-                    cat_image_names = list(self.cat2img[cat_id])
-                    cat_image_names = random.sample(cat_image_names, self.n_shots)
-                    for i in (range(len(images_data), len(images_data) + self.n_shots)):
-                        intended_classes[i].append(cat_id)
-                    images_data += cat_image_names
-                cat_ids = [-1] + sorted(cat_ids)
-                
+                intended_classes = [[] for _ in range(self.n_ways * self.n_shots + 1)]
+                if self.n_ways == 1:
+                    cat_ids = [-1, random.choice(list(self.categories.keys()))]
+                    images_data = random.sample(
+                        list(self.cat2img[cat_ids[1]]), self.n_shots + 1
+                    )
+                    intended_classes[0].append(cat_ids[1])
+                    for i in range(1, self.n_shots + 1):
+                        intended_classes[i].append(cat_ids[1])
+                else:
+                    cat_ids = random.sample(list(self.categories.keys()), self.n_ways)
+                    query_image_name = random.choice(list(self.cat2img[cat_ids[0]]))
+                    intended_classes[0].append(cat_ids[0])
+                    
+                    images_data = [query_image_name]
+                    for cat_id in cat_ids:
+                        cat_image_names = list(self.cat2img[cat_id])
+                        cat_image_names = random.sample(cat_image_names, self.n_shots)
+                        for i in (range(len(images_data), len(images_data) + self.n_shots)):
+                            intended_classes[i].append(cat_id)
+                        images_data += cat_image_names
+                    cat_ids = [-1] + sorted(cat_ids)
+                    
             images_name, _ = zip(*images_data)
 
             images, image_key, ground_truths = self._get_images_or_embeddings(images_name)

@@ -1,3 +1,4 @@
+import pandas as pd
 import torch
 
 from torch.utils.data import DataLoader
@@ -46,7 +47,7 @@ def map_collate(dataset):
 def get_preprocessing(params):
     
     preprocess_params = params.get("preprocess", {})
-    size = preprocess_params["image_size"]
+    size = preprocess_params.get("image_size", 256)
     mean = preprocess_params.get("mean", "default")
     std = preprocess_params.get("std", "default")
     mean, std = get_mean_std(mean, std)
@@ -59,7 +60,7 @@ def get_preprocessing(params):
         )
     
     
-def get_dataloaders(dataset_args, dataloader_args, num_processes):
+def get_dataloaders(dataset_args, dataloader_args, num_processes, process_idx=None, working_dir=None):
     preprocess = get_preprocessing(dataset_args)
 
     datasets_params = dataset_args.get("datasets")
@@ -70,6 +71,7 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes):
     )
     if "batch_size" in dataloader_args:
         batch_size = dataloader_args["batch_size"]
+        dataloader_args.pop("batch_size")
         possible_batch_example_nums = [[batch_size]]
         val_possible_batch_example_nums = [[batch_size]]
 
@@ -117,10 +119,19 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes):
                 datasets_params={dataset_name: params},
                 common_params={**common_params, "preprocess": preprocess},
             )
+            if process_idx is not None:
+                if working_dir is None:
+                    raise ValueError("working_dir must be provided when process_idx is set")
+                val_dataset_csv = pd.read_csv(f"{working_dir}/{dataset}.csv")
+                val_dataset_csv = val_dataset_csv.applymap(eval)
+            else:
+                val_dataset_csv = None
+            
             val_batch_sampler = VariableBatchSampler(
                 val_dataset,
                 possible_batch_example_nums=val_possible_batch_example_nums,
                 num_processes=num_processes,
+                metadata_df=val_dataset_csv,
             )
             val_dataloader = DataLoader(
                 dataset=val_dataset,

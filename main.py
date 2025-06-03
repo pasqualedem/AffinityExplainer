@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 import os
 import click
@@ -6,7 +7,8 @@ import yaml
 from affex.evaluate import evaluate
 from affex.utils.logger import get_logger
 from affex.utils.utils import load_yaml
-from affex.utils.grid import ParallelRun, create_experiment
+from affex.utils.grid import create_experiment
+from affex.utils.run import ParallelRun
 
 
 OUT_FOLDER = "out"
@@ -53,6 +55,7 @@ def grid(parameters, parallel, only_create=False):
     grid_logger.info(f"Running {len(runs_parameters)} runs")
     for i, run_parameters in enumerate(runs_parameters):
         run_name = f"{log_folder}/run_{i}"
+        os.makedirs(run_name, exist_ok=True)
         if parallel:
             run = ParallelRun(
                 run_parameters,
