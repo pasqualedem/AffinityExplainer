@@ -91,6 +91,11 @@ def grid(parameters, parallel, only_create=False):
 @click.option(
     "--disable_log_on_file", default=False, is_flag=True, help="Disable Log on file"
 )
+@click.option(
+    "--run_name",
+    default=None,
+    help="Name of the run, if not provided, it will be generated based on the current time",
+)
 def run(
     parameters,
     run_name=None,

@@ -14,6 +14,7 @@ class ParallelRun:
     slurm_command = "sbatch"
     slurm_multi_gpu_script = "slurm/launch_run_multi_gpu"
     slurm_script_first_parameter = "--parameters="
+    slurm_script_run_name_parameter = "--run_name="
     out_extension = "log"
     param_extension = "yaml"
     slurm_stderr = "-e"
@@ -64,16 +65,16 @@ class ParallelRun:
                     dataset_shard[i].to_csv(dataset_file, index=False)
 
                 self.launch_process(
-                    run_parameters, out_file, param_file, only_create, script_args
+                    run_parameters, run_name, out_file, param_file, only_create, script_args
                 )
         else:
             self.logger.info("Running a single process")
             self.launch_process(
-                self.params, out_file, param_file, only_create, script_args
+                self.params, run_name, out_file, param_file, only_create, script_args
             )
 
     def launch_process(
-        self, params, out_file, param_file, only_create=False, script_args=[]
+        self, params, run_name, out_file, param_file, only_create=False, script_args=[]
     ):
         write_yaml(params, param_file)
         slurm_script = (
@@ -87,6 +88,7 @@ class ParallelRun:
             out_file,
             slurm_script,
             self.slurm_script_first_parameter + param_file,
+            self.slurm_script_run_name_parameter + run_name,
             *script_args,
         ]
         if only_create:
