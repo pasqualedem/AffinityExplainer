@@ -238,8 +238,8 @@ class AffinityExplainer:
                 level_contribution = normalized_level_attn[:, explanation_mask[chosen_class]].mean(dim=1)
                 level_contribution = rearrange(level_contribution, "(b hs ws n) -> (b n) hs ws", hs=h, ws=w, n=class_shots)
                 resized_level_contribution = resize(level_contribution, explanation_size, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
-                resized_level_contribution = rearrange(resized_level_contribution, "(b n) h w -> b h (n w)", n=class_shots)
-                normalized_level_contribution = resized_level_contribution / (resized_level_contribution.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                resized_level_contribution = rearrange(resized_level_contribution, "(b n) h w -> b n h w", n=class_shots)
+                normalized_level_contribution = resized_level_contribution / (resized_level_contribution.sum(dim=(-1, -2, -3), keepdim=True) + 1e-6)
                 level_contributions.append(normalized_level_contribution)
                 level_predictions.append(level_prediction)
 

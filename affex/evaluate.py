@@ -3,8 +3,14 @@ OUT_FOLDER = "out"
 import copy
 import os
 import uuid
+import pandas as pd
 import torch
+from tqdm import tqdm
 import yaml
+import lovely_tensors as lt
+
+from affex.utils.segmentation import create_rgb_segmentation, unnormalize
+lt.monkey_patch()
 
 from affex.data import get_dataloaders
 from affex.data.utils import BatchKeys
@@ -13,7 +19,7 @@ from affex.metrics import FSSCausalMetric
 from affex.models import build_model, build_model_preconfigured
 from affex.substitution import Substitutor
 from affex.utils.logger import get_logger
-from affex.utils.utils import to_device
+from affex.utils.utils import ResultDict, to_device
 
 from torchmetrics import MetricCollection
 
@@ -25,6 +31,33 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    
+    
+def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx):
+    """Log the step results."""
+    outfolder = os.path.join(outfolder, f"batch_{batch_idx}")
+    os.makedirs(outfolder, exist_ok=True)
+    
+    images = input_dict[BatchKeys.IMAGES]
+    unnormalize(images).rgb.fig.savefig(os.path.join(outfolder, "images.png"))
+    
+    logits = results[ResultDict.LOGITS]
+    seg = create_rgb_segmentation(logits.cpu())
+    seg.rgb.fig.savefig(os.path.join(outfolder, "segmentation.png"))
+    
+    gt = create_rgb_segmentation(gt.cpu())
+    gt.rgb.fig.savefig(os.path.join(outfolder, "ground_truth.png"))
+    
+    explanation.chans.fig.savefig(os.path.join(outfolder, "explanation.png"))
+    
+    metrics_folders = os.path.join(outfolder, "metrics")
+    os.makedirs(metrics_folders, exist_ok=True)
+    for metric_name, metric_value in metrics.items():
+        mid_statuses = metric_value.mid_statuses
+        for mid_status in mid_statuses:
+            j, mig_images, mid_masks, top_pred = mid_status
+            unnormalize(mig_images).rgb.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_img.png"))
+            mid_masks.chans.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_mask.png"))
 
 
 def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
@@ -51,6 +84,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     model, image_size = build_model_preconfigured(model_name=parameters["model"])
     model.eval()
     model.to(device)
+    log_frequency = parameters.get("log_frequency", 50)
 
     for k in parameters["dataset"]["datasets"]:
         parameters["dataset"]["datasets"][k]["image_size"] = image_size
@@ -95,9 +129,16 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
 
     for dataset_name, val_dataloader in val.items():
         logger.info(f"Evaluating {dataset_name} dataset")
-        for i, batch in enumerate(val_dataloader):
+        bar = tqdm(
+            enumerate(val_dataloader),
+            total=len(val_dataloader),
+            desc=f"Evaluating {dataset_name}",
+            unit="batch",
+        )
+        
+        for i, batch in bar:
             logger.info(f"Processing batch {i}")
-            batch, dataset_name = batch
+            batch, _ = batch
 
             substitutor = Substitutor(substitute=False)
             substitutor.reset(batch=batch)
@@ -125,4 +166,19 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             scores = metrics.compute()
             dauc = scores["dauc_auc"]
             iauc = scores["iauc_auc"]
+            
             logger.info(f"iAUC: {iauc:.4f}, dAUC: {dauc:.4f}")
+        
+            if i % log_frequency == 0:
+                log_step(input_dict, gt, result, explanation, metrics, run_name, i)
+            
+        daucs = scores["dauc_aucs"]
+        iaucs = scores["iauc_aucs"]
+            
+        scores_df = pd.DataFrame(
+            {
+                "dauc_aucs": torch.tensor(daucs).tolist(),
+                "iauc_aucs": torch.tensor(iaucs).tolist(),
+            }
+        )
+        scores_df.to_csv(os.path.join(run_name, f"scores_{dataset_name}.csv"), index=False)

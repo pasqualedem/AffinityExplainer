@@ -74,6 +74,8 @@ class FSSCausalMetric(Metric):
         self.substrate_fn = get_substrate_fn(substrate_fn)
         self.reduce = lambda x : torch.mean(x, dim=-1)
         
+        self.mid_statuses = None
+        self.mid_status_frequency = None
         self.xauc = None
         self.scores = None
         self.n_steps = None
@@ -178,14 +180,17 @@ class FSSCausalMetric(Metric):
         MHW = H * W * M
         
         device = images.device
+        self.mid_statuses = []
+        
         with torch.no_grad():
             result = self.model(to_device(input_dict, device), postprocess=False)
             preds = F.softmax(result[ResultDict.LOGITS], dim=1)
             preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
         top = torch.argmax(preds, -1)
         self.n_steps = (MHW + self.step - 1) // self.step
+        self.mid_status_frequency = self.n_steps // 10 if self.n_steps > 10 else 1
         scores = torch.empty((self.n_steps + 1, B))
-        salient_order = torch.sort(explanation.reshape(-1, MHW), dim=1, descending=True)[1]
+        salient_order = torch.sort(rearrange(explanation, "B M H W -> B (M H W)", M=M, H=H, W=W), dim=1, descending=True)[1]
 
         start, finish, caption = self.get_start_finish(input_dict)
 
@@ -204,6 +209,11 @@ class FSSCausalMetric(Metric):
             # Change specified number of most salient pixels to substrate pixels
             coords = salient_order[:, self.step * i:self.step * (i + 1)]
             start = self.finish_to_start(start, finish, coords)
+            
+            if i % self.mid_status_frequency == 0:
+                self.mid_statuses.append(
+                    (i, start[BatchKeys.IMAGES].clone().cpu(), start[BatchKeys.PROMPT_MASKS].clone().cpu(), top_preds.clone())
+                )
             if interactive:
                 yield start, i, scores[:i+1]
         self.xauc = auc(scores.mean(1))
@@ -228,7 +238,7 @@ class FSSCausalMetric(Metric):
         xaucs, scores = zip(*self.results)
         self.xauc = np.mean(xaucs)
         self.scores = np.mean(scores, axis=0)
-        return {"auc": self.xauc, "scores": self.scores}
+        return {"auc": self.xauc, "scores": self.scores, "aucs": xaucs}
     
     def reset(self):
         r"""Reset the metric."""
