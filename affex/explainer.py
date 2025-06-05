@@ -38,7 +38,7 @@ class LamLayerGradCam(LayerGradCam):
 
 class TraditionalExplainer(nn.Module):
     methods = {
-        "integrated gradients": (IntegratedGradients, {}, {"n_steps": 100, "internal_batch_size": 1}),
+        "integrated_gradients": (IntegratedGradients, {}, {"n_steps": 100, "internal_batch_size": 1}),
         "saliency": (Saliency, {}, {}),
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
     }
@@ -90,7 +90,7 @@ class TraditionalExplainer(nn.Module):
         if chosen_classes is None:
             chosen_classes = input_dict[BatchKeys.PROMPT_MASKS].shape[2] - 1
         
-        for chosen_class in chosen_classes:
+        for chosen_class in range(chosen_classes):
             attribution_tuple = self.method.attribute(
                 main_input,
                 additional_forward_args=additional_input,
@@ -99,8 +99,8 @@ class TraditionalExplainer(nn.Module):
             )
             attribution_dict = dict(zip(tuple_mapping.keys(), attribution_tuple))
             explanation = attribution_dict[BatchKeys.IMAGES]
+            explanation = explanation[:, 1:]
             explanation = min_max_scale(explanation.mean(dim=2))
-            explanation[:, 1:].chans
             explanations.append(explanation)
             
         return explanations
@@ -262,7 +262,7 @@ class AffinityExplainer:
     
     
 EXPLAINER_REGISTRY = {
-    "integrated gradients": TraditionalExplainer,
+    "integrated_gradients": TraditionalExplainer,
     "saliency": TraditionalExplainer,
     "gradcam": TraditionalExplainer,
     "affinity": AffinityExplainer,

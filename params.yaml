@@ -3,7 +3,7 @@ grid: Test
 parameters:
   model: [dcama]
   explainer:
-    name: [affinity]
+    name: [integrated_gradients]
 
   explanation_masking: ["logits"]
   log_frequency: [100]
