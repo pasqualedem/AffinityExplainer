@@ -243,7 +243,7 @@ class AffinityExplainer:
                 level_contributions.append(normalized_level_contribution)
                 level_predictions.append(level_prediction)
 
-            contrib_seq = torch.stack(level_contributions)
+            contrib_seq = torch.stack(level_contributions, dim=1)  # B C N H W
             mean_contrib = contrib_seq.mean(dim=0)
 
             cmask_contrib = self.model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, image_size=explanation_size)
@@ -252,13 +252,34 @@ class AffinityExplainer:
 
             mean_contrib = min_max_scale(mean_contrib)
 
-            cmask_contrib = rearrange(cmask_contrib, "c -> c 1 1 1")
-            weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=0))
+            cmask_contrib = rearrange(cmask_contrib, "c -> 1 c 1 1 1") # B C N H W
+            weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=1))
 
             # explanations.append((mean_contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots))
             explanations.append(weighted_contrib)
         return explanations
     
+    
+class RandomExplainer:
+    def __init__(self, model):
+        self.model = model
+        
+    def explain(self, input_dict, result=None, explanation_mask="logits", explanation_size=None, selected_classes=None):
+        images = input_dict[BatchKeys.IMAGES]
+        support_images = images[:, 1:]
+        
+        masks = input_dict[BatchKeys.PROMPT_MASKS]
+        num_classes = masks.shape[2] - 1
+        if selected_classes is None:
+            selected_classes = list(range(num_classes))
+        
+        explanations = []
+        
+        for chosen_class in selected_classes:
+            explanation = torch.rand_like(support_images)[:, :, 0]
+            explanations.append(explanation)
+        
+        return explanations
     
     
 EXPLAINER_REGISTRY = {
@@ -266,6 +287,7 @@ EXPLAINER_REGISTRY = {
     "saliency": TraditionalExplainer,
     "gradcam": TraditionalExplainer,
     "affinity": AffinityExplainer,
+    "random": RandomExplainer,
 }
 
 
@@ -276,7 +298,7 @@ def build_explainer(model, name, params, device="cpu"):
         raise ValueError(f"Explainer {name} is not supported. Supported explainers: {list(EXPLAINER_REGISTRY.keys())}")
     
     explainer_class = EXPLAINER_REGISTRY[name]
-    if name == "affinity":
+    if name == "affinity" or name == "random":
         return explainer_class(model, **params)
     
     return explainer_class(model=model, method=name, **params).to(device)

@@ -191,6 +191,7 @@ class FSSCausalMetric(Metric):
         self.mid_status_frequency = self.n_steps // 10 if self.n_steps > 10 else 1
         scores = torch.empty((self.n_steps + 1, B))
         salient_order = torch.sort(rearrange(explanation, "B M H W -> B (M H W)", M=M, H=H, W=W), dim=1, descending=True)[1]
+        assert salient_order.shape == (B, MHW), f"Expected shape {(B, MHW)}, got {salient_order.shape}"
 
         start, finish, caption = self.get_start_finish(input_dict)
 
