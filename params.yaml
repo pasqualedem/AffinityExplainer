@@ -1,9 +1,9 @@
-grid: Test
+grid: Grid
 
 parameters:
   model: [dcama]
   explainer:
-    name: [random, affinity]
+    name: [random, affinity, integrated_gradients, saliency]
 
   explanation_masking: ["logits"]
   log_frequency: [100]
