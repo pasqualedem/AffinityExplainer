@@ -4,6 +4,8 @@ import os
 import click
 import yaml
 
+
+from affex.collect import runs_collect
 from affex.evaluate import evaluate
 from affex.utils.logger import get_logger
 from affex.utils.utils import load_yaml
@@ -109,6 +111,31 @@ def run(
         not disable_log_params,
         not disable_log_on_file,
     )
+    
+    
+@cli.command("collect")
+@click.option(
+    "-f", "--folder",
+    default=None,
+    help="Path to the folder containing the runs to collect",
+)
+@click.option(
+    "--no_wandb",
+    default=False,
+    is_flag=True,
+    help="Disable wandb collection",
+)
+@click.option(
+    "--overwrite",
+    default=False,
+    is_flag=True,
+    help="Overwrite existing runs on wandb",
+)
+def collect(folder, no_wandb, overwrite):
+    assert os.path.exists(folder), f"Folder {folder} does not exist"
+    assert os.path.isdir(folder), f"{folder} is not a directory"
+    
+    runs_collect(folder=folder, use_wandb=not no_wandb, overwrite=overwrite)
 
 
 if __name__ == "__main__":
