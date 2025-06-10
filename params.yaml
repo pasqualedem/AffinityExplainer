@@ -1,4 +1,4 @@
-grid: Grid
+grid: FirstGrid
 
 parameters:
   model: [dcama]
@@ -6,7 +6,7 @@ parameters:
     name: [random, affinity, integrated_gradients, saliency]
 
   explanation_masking: [ground_truth, logits]
-  log_frequency: [1]
+  log_frequency: [50]
 
   metric:
     step: [1000]
