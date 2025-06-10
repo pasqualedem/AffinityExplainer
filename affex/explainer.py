@@ -171,17 +171,7 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
             size=(target_shape, target_shape),
             mode="nearest",
         )[:, 0]
-        logits = F.interpolate(
-                result[ResultDict.LOGITS],
-                size=target_shape,
-                mode="bilinear",
-                align_corners=False,
-                antialias=False,
-            )[:, 1]
         gt[gt == -100] = 0  # Convert -100 to 0 for ground truth
-        gt.chans.fig.savefig("chans.png")
-        logits.chans.fig.savefig("chans1.png")
-        unnormalize(input_dict["images"])[0, 0].rgb.fig.savefig("img.png")
         explanation_mask = F.one_hot(gt.long(), num_classes=n_ways+1).permute(0, 3, 1, 2)[0].bool()[1]
     
     return explanation_mask

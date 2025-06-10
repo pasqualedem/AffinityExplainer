@@ -188,7 +188,9 @@ class FSSCausalMetric(Metric):
             preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
         top = torch.argmax(preds, -1)
         self.n_steps = (MHW + self.step - 1) // self.step
-        self.mid_status_frequency = self.n_steps // 10 if self.n_steps > 10 else 1
+        self.mid_status_frequency = np.unique(
+            np.round(np.logspace(0, np.log10(self.n_steps), num=30)).astype(int)
+        ).tolist()
         scores = torch.empty((self.n_steps + 1, B))
         salient_order = torch.sort(rearrange(explanation, "B M H W -> B (M H W)", M=M, H=H, W=W), dim=1, descending=True)[1]
         assert salient_order.shape == (B, MHW), f"Expected shape {(B, MHW)}, got {salient_order.shape}"
@@ -211,7 +213,7 @@ class FSSCausalMetric(Metric):
             coords = salient_order[:, self.step * i:self.step * (i + 1)]
             start = self.finish_to_start(start, finish, coords)
             
-            if i % self.mid_status_frequency == 0:
+            if i in self.mid_status_frequency:
                 self.mid_statuses.append(
                     (i, start[BatchKeys.IMAGES].clone().cpu(), start[BatchKeys.PROMPT_MASKS].clone().cpu(), top_preds.clone())
                 )
