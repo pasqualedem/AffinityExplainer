@@ -20,7 +20,7 @@ parameters:
         name: [pascal]
         data_dir: &instance_dir [data/pascal]
         split: ["val"]
-        val_fold_idx: [0]
+        val_fold_idx: [null]
         n_folds: [4]
         n_shots: [5]
         n_ways: [1]

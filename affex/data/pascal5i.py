@@ -14,9 +14,9 @@ class Pascal5iSplit(StrEnum):
 class Pascal5iDataset(PascalDataset):
     def __init__(
         self,
-        val_fold_idx: int,
         n_folds: int,
         n_shots: int = None,
+        val_fold_idx: int = None,
         val_num_samples: int = 1000,
         *args,
         **kwargs
@@ -31,7 +31,7 @@ class Pascal5iDataset(PascalDataset):
         super().__init__(*args, **kwargs, load_annotation_dicts=False)
 
         assert self.split in [Pascal5iSplit.TRAIN, Pascal5iSplit.VAL]
-        assert val_fold_idx < n_folds
+        assert val_fold_idx is None or val_fold_idx < n_folds, "val_fold_idx should be less than n_folds or None"
         assert self.split == Pascal5iSplit.TRAIN or n_shots is not None
         # If n_shots is min, n_ways should be max
         assert (
@@ -49,11 +49,17 @@ class Pascal5iDataset(PascalDataset):
 
     def __prepare_benchmark(self):
         n_categories = len(self.categories)
-        idxs_val = [
-            self.val_fold_idx * (n_categories // self.n_folds) + i
-            for i in range((n_categories // self.n_folds))
-        ]
-        idxs_train = [i for i in range(n_categories) if i not in idxs_val]
+        if self.val_fold_idx is None:
+            idxs_val = [
+                i for i in range(n_categories)
+            ]
+            idxs_train = []
+        else:
+            idxs_val = [
+                self.val_fold_idx * (n_categories // self.n_folds) + i
+                for i in range((n_categories // self.n_folds))
+            ]
+            idxs_train = [i for i in range(n_categories) if i not in idxs_val]
 
         if self.split == Pascal5iSplit.TRAIN:
             idxs = idxs_train
