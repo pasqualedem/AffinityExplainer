@@ -163,7 +163,7 @@ class FSSCausalMetric(Metric):
         r"""Interactive evaluation: yields intermediate states."""
         yield from self._evaluate_core(input_dict, explanation, explanation_mask, interactive=True)
 
-    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive):
+    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=False):
         r"""Efficiently evaluate big batch of images.
 
         Args:
@@ -196,7 +196,7 @@ class FSSCausalMetric(Metric):
         start, finish, caption = self.get_start_finish(input_dict)
 
         # While not all pixels are changed
-        for i in tqdm(range(self.n_steps+1), desc=caption + 'pixels'):
+        for i in tqdm(range(self.n_steps+1), desc=caption + 'pixels', disable=not verbose):
             # clear_output()
             # display(unnormalize(start[BatchKeys.IMAGES][0, 1:]).rgb)
             # display(unnormalize(finish[BatchKeys.IMAGES][0, 1:]).rgb)

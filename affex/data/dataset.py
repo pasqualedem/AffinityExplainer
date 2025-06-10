@@ -259,12 +259,13 @@ class FSSDataset(Dataset):
         max_classes = max([x["prompt_masks"].size(1) for x in batched_input])
 
         # gt
+        maintain_gt_shape = [d.maintain_gt_shape for d in self.datasets.values()][0]
         dims = torch.stack([x["dims"] for x in batched_input])
         max_dims = torch.max(dims.view(-1, 2), 0).values.tolist()
         ground_truths = [x["ground_truths"] for x in batched_input]
-        ground_truths = torch.stack(
-            [utils.collate_batch_gts(x, max_dims) for x in ground_truths]
-        )
+        if maintain_gt_shape:
+            ground_truths = [utils.collate_gts(x, max_dims) for x in ground_truths]
+        ground_truths = torch.stack(ground_truths)
 
         # prompt mask
         masks = [x["prompt_masks"] for x in batched_input]

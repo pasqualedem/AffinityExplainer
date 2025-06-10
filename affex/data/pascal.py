@@ -53,6 +53,7 @@ class PascalDataset(Dataset):
         ignore_index: int = -100,
         ignore_borders: bool = False,
         is_pyramids: bool = False,
+        maintain_gt_shape: bool = True,
     ):
         super().__init__()
         print(f"Loading image filenames from {split}...")
@@ -86,6 +87,7 @@ class PascalDataset(Dataset):
         self.is_pyramids = is_pyramids
         self.ignore_index = ignore_index
         self.ignore_borders = ignore_borders
+        self.maintain_gt_shape = maintain_gt_shape
 
         self.masks_dir_list = set(os.listdir(self.masks_dir))
         self.aug_masks_dir_list = set(os.listdir(self.masks_dir + "Aug"))

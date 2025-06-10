@@ -3,6 +3,8 @@ OUT_FOLDER = "out"
 import copy
 import os
 import uuid
+from matplotlib import pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -58,6 +60,23 @@ def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx
             j, mig_images, mid_masks, top_pred = mid_status
             unnormalize(mig_images).rgb.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_img.png"))
             mid_masks.chans.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_mask.png"))
+            
+        scores = metric_value.compute()["scores"]
+        scores_df = pd.DataFrame(scores)
+        scores_df.to_csv(os.path.join(metrics_folders, f"{metric_name}_scores.csv"), index=False)
+        
+        # Plot scores
+        batch_element = 0  # Change this to plot a different batch element
+        plt.plot(np.arange(scores.shape[0]) / scores.shape[0], scores[:, batch_element])
+        plt.fill_between(np.arange(scores.shape[0]) / scores.shape[0], 0, scores[:, batch_element], alpha=0.4)
+        plt.xlim(-0.1, 1.1)
+        plt.ylim(0, 1.05)
+        plt.xlabel(f'Pixels changed')
+        plt.ylabel('Score')
+        plt.title(f'{metric_name}')
+        plt.savefig(os.path.join(metrics_folders, f"{metric_name}_scores.svg"))
+        plt.clf()
+        plt.close()
 
 
 def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
@@ -137,7 +156,6 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
         )
         
         for i, batch in bar:
-            logger.info(f"Processing batch {i}")
             batch, _ = batch
 
             substitutor = Substitutor(substitute=False)
@@ -145,12 +163,15 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             input_dict, gt = next(substitutor)
             input_dict = to_device(input_dict, device)
             
+            
+            bar.set_description(f"Calculating prediction")
             with torch.no_grad():
-                result = model(input_dict)
+                result = model(input_dict, postprocess=False)
 
             explanation_size = explanation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
             explanation_mask = get_explanation_mask(input_dict, gt, result, explanation_size, masking_type)
 
+            bar.set_description(f"Calculating explanation")
             explanation = explainer.explain(
                 input_dict=input_dict,
                 explanation_mask=explanation_mask,
@@ -158,6 +179,8 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             )
             assert len(explanation) == 1, "Only support one class for now"
             explanation = explanation[0]
+            
+            bar.set_description(f"Calculating metrics")
             metrics.update(
                 input_dict=input_dict,
                 explanation=explanation,

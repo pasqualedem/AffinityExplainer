@@ -3,10 +3,10 @@ grid: Test
 parameters:
   model: [dcama]
   explainer:
-    name: [random, affinity]
+    name: [random, affinity, integrated_gradients, saliency]
 
-  explanation_masking: ["logits"]
-  log_frequency: [100]
+  explanation_masking: [ground_truth, logits]
+  log_frequency: [1]
 
   metric:
     step: [1000]
@@ -22,10 +22,11 @@ parameters:
         split: ["val"]
         val_fold_idx: [0]
         n_folds: [4]
-        n_shots: [5]
+        n_shots: [2]
         n_ways: [1]
         do_subsample: [False]
         val_num_samples: [1000]
+        maintain_gt_shape: [False]
     common:
       remove_small_annotations: [True]
       ignore_borders: [True]

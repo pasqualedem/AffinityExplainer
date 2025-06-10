@@ -11,6 +11,7 @@ from captum.attr import IntegratedGradients, Saliency, LayerGradCam
 
 
 from affex.data.utils import BatchKeys, min_max_scale
+from affex.utils.segmentation import unnormalize
 from affex.utils.utils import ResultDict
 from affex.models.dcama import DCAMAMultiClass
 from affex.models.dmtnet import DMTNetMultiClass
@@ -155,9 +156,7 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
     
     n_ways = input_dict[BatchKeys.PROMPT_MASKS].shape[2] - 1
     
-    if masking_type == "logits":
-        logits = result[ResultDict.LOGITS]
-    
+    if masking_type == "logits":    
         logits = F.interpolate(
                 result[ResultDict.LOGITS],
                 size=target_shape,
@@ -166,14 +165,23 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
                 antialias=False,
             ).argmax(dim=1)
         explanation_mask = F.one_hot(logits, num_classes=n_ways+1).permute(0, 3, 1, 2)[0].bool()[1]
-    elif masking_type == "gt":
+    elif masking_type == "gt" or masking_type == "ground_truth":
         gt = F.interpolate(
-            gt,
-            size=target_shape,
+            gt.float().unsqueeze(1),
+            size=(target_shape, target_shape),
             mode="nearest",
-            align_corners=False,
-            antialias=False,
-        )
+        )[:, 0]
+        logits = F.interpolate(
+                result[ResultDict.LOGITS],
+                size=target_shape,
+                mode="bilinear",
+                align_corners=False,
+                antialias=False,
+            )[:, 1]
+        gt[gt == -100] = 0  # Convert -100 to 0 for ground truth
+        gt.chans.fig.savefig("chans.png")
+        logits.chans.fig.savefig("chans1.png")
+        unnormalize(input_dict["images"])[0, 0].rgb.fig.savefig("img.png")
         explanation_mask = F.one_hot(gt.long(), num_classes=n_ways+1).permute(0, 3, 1, 2)[0].bool()[1]
     
     return explanation_mask

@@ -120,9 +120,19 @@ class Pascal5iDataset(PascalDataset):
         # stack ground truths
         dims = torch.tensor(img_sizes)
         max_dims = torch.max(dims, 0).values.tolist()
-        ground_truths = torch.stack(
-            [utils.collate_gts(x, max_dims) for x in ground_truths]
-        )
+        
+        if self.maintain_gt_shape:
+            ground_truths = [utils.collate_gts(x, max_dims) for x in ground_truths]
+        else:
+            image_size = images.shape[-2:]
+            ground_truths = [
+                torch.nn.functional.interpolate(
+                    gt.unsqueeze(0).unsqueeze(0).float(), size=image_size, mode="nearest"
+                ).squeeze(0).squeeze(0).long()
+                for gt in ground_truths
+            ]
+            
+        ground_truths = torch.stack(ground_truths)
 
         if self.load_gts:
             # convert the ground truths to the right format
