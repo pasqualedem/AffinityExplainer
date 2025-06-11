@@ -1,9 +1,9 @@
-grid: FirstGrid
+grid: DMTNet
 
 parameters:
-  model: [dcama]
+  model: [dmtnet]
   explainer:
-    name: [random, affinity, integrated_gradients, saliency]
+    name: [affinity, random]
 
   explanation_masking: [ground_truth, logits]
   log_frequency: [50]
