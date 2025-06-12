@@ -3,7 +3,7 @@ grid: DMTNet
 parameters:
   model: [dmtnet]
   explainer:
-    name: [affinity, random]
+    name: [affinity, integrated_gradients, saliency, random]
 
   explanation_masking: [ground_truth, logits]
   log_frequency: [50]

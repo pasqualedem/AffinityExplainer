@@ -91,6 +91,7 @@ def get_dmtnet(**kwargs):
     name = "dmtnet"
     params = dict(
         model_checkpoint="checkpoints/dmtnet.pt",
+        voting=False,
     )
     image_size = 400
     dmtnet = MODEL_REGISTRY[name](**params)

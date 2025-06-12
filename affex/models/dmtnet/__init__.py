@@ -8,8 +8,8 @@ from affex.models.dmtnet.dmtnet import DMTNetwork
 from affex.utils.utils import ResultDict
 
 
-def build_dmtnet(backbone="resnet50", model_checkpoint="checkpoints/dmtnet.pt"):
-    model = DMTNetMultiClass(backbone)
+def build_dmtnet(backbone="resnet50", model_checkpoint="checkpoints/dmtnet.pt", voting=True):
+    model = DMTNetMultiClass(backbone, voting=voting)
     src_dict = torch.load(model_checkpoint, map_location="cpu")
     src_dict = {k[len("module."):]: v for k, v in src_dict.items()}
     model.load_state_dict(src_dict)
@@ -87,6 +87,16 @@ class DMTNetMultiClass(DMTNetwork):
             bg_positions = fg_logits.argmax(dim=1)
             bg_logits = torch.gather(bg_logits, 1, bg_positions.unsqueeze(1))
             logits = torch.cat([bg_logits, fg_logits], dim=1)
+        elif not self.vote_prediction:
+            if masks.size(2) == 1:
+                logits = voting_masks[0]
+            else:
+                multiclass_logits = torch.stack(voting_masks, dim=1) # voting masks are actually logits
+                fg_logits = multiclass_logits[:, :, 1, ::]
+                bg_logits = multiclass_logits[:, :, 0, ::]
+                bg_positions = fg_logits.argmax(dim=1)
+                bg_logits = torch.gather(bg_logits, 1, bg_positions.unsqueeze(1))
+                logits = torch.cat([bg_logits, fg_logits], dim=1)
         else:
             votes = torch.stack([class_res for class_res in voting_masks], dim=1)
             preds = (votes.argmax(dim=1)+1) * (votes > 0.5).max(dim=1).values

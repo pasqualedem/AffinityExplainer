@@ -18,8 +18,9 @@ import numpy as np
 
 
 class DMTNetwork(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, voting=True):
         super(DMTNetwork, self).__init__()
+        self.vote_prediction = voting
 
         # 1. Backbone network initialization
         self.backbone_type = backbone
@@ -83,11 +84,10 @@ class DMTNetwork(nn.Module):
         self.dropout = nn.Dropout(p=0.2)
 
     def predict_mask_1shot(self, query_img, support_img, support_mask):
-        with torch.no_grad():
-            query_feats = self.extract_feats(query_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
-            support_feats = self.extract_feats(support_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
-            bg_support_feats, prototypes_f_grid, prototypes_b_grid = self.mask_feature_grid(support_feats, support_mask.clone(), query_feats)
-            support_feats, prototypes_f, prototypes_b = self.mask_feature(support_feats, support_mask.clone())
+        query_feats = self.extract_feats(query_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        support_feats = self.extract_feats(support_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        bg_support_feats, prototypes_f_grid, prototypes_b_grid = self.mask_feature_grid(support_feats, support_mask.clone(), query_feats)
+        support_feats, prototypes_f, prototypes_b = self.mask_feature(support_feats, support_mask.clone())
 
         prototypes_f_q, prototypes_b_q, pred_mask = self.query_prototypes(query_feats, prototypes_f_grid, prototypes_b_grid)
         query_feats, support_feats, bg_support_feats = self.Transformation_Feature(query_feats, support_feats, bg_support_feats, prototypes_f, prototypes_b, prototypes_f_q, prototypes_b_q)
@@ -266,11 +266,14 @@ class DMTNetwork(nn.Module):
         # logit_mask_agg.size [bsz,w,h]
         # pred_mask.size [bsz,w,h]
         # Average & quantize predictions given threshold (=0.5)
-        bsz = logit_mask_agg.size(0)
-        max_vote = logit_mask_agg.view(bsz, -1).max(dim=1)[0]
-        max_vote = torch.stack([max_vote, torch.ones_like(max_vote).long()])
-        max_vote = max_vote.max(dim=0)[0].view(bsz, 1, 1)
-        pred_mask = logit_mask_agg.float() / max_vote
+        if self.vote_prediction: # vote predictiones
+            bsz = logit_mask_agg.size(0)
+            max_vote = logit_mask_agg.view(bsz, -1).max(dim=1)[0]
+            max_vote = torch.stack([max_vote, torch.ones_like(max_vote).long()])
+            max_vote = max_vote.max(dim=0)[0].view(bsz, 1, 1)
+            pred_mask = logit_mask_agg.float() / max_vote
+        else: # logit prediction
+            pred_mask = torch.stack(logit_mask_orig).softmax(dim=2).max(dim=0).values
         # pred_mask[pred_mask < 0.5] = 0
         # pred_mask[pred_mask >= 0.5] = 1
 
