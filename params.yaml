@@ -12,7 +12,7 @@ parameters:
     step: [1000]
     substrate_fn: [zero]
 
-  num_processes: [10]
+  num_processes: [5]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
