@@ -184,7 +184,7 @@ class AffinityExplainer:
             raise ValueError(f"Model {model.__class__.__name__} is not supported for explanations. Supported models: {list(EXPLAINER_REGISTRY.keys())}")
         assert hasattr(model, "feature_ablation"), f"Model {model.__class__.__name__} does not have a feature_ablation method for explanations."
 
-    def explain(self, input_dict, result=None, explanation_mask="logits", explanation_size=None, selected_classes=None):
+    def explain(self, input_dict, result=None, explanation_mask="logits", explanation_size=None, selected_classes=None, gt=None):
         
         if result is None:
             with torch.no_grad():
@@ -201,8 +201,11 @@ class AffinityExplainer:
             explanation_size = input_dict[BatchKeys.IMAGES][:, 0].shape[2:]
             
         if explanation_mask == "logits":
-            explanation_mask = get_explanation_mask(input_dict, result, explanation_size)
-            
+            explanation_mask = get_explanation_mask(input_dict, gt=None, result=result, target_shape=explanation_size, masking_type=explanation_mask)
+        elif explanation_mask == "gt" or explanation_mask == "ground_truth":
+            assert gt is not None, "Ground truth (gt) must be provided when using 'gt' or 'ground_truth' masking type."
+            explanation_mask = get_explanation_mask(input_dict, gt=gt, result=result, target_shape=explanation_size, masking_type=explanation_mask)
+
         if len(explanation_mask.shape) == 2: # We need class dimension
             explanation_mask = repeat(explanation_mask, "h w -> c h w", c=num_classes)
         
