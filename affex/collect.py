@@ -4,6 +4,8 @@ import os
 import wandb
 from collections import defaultdict
 
+import wandb.errors
+
 from affex.utils.utils import load_yaml, write_yaml
 
 
@@ -27,13 +29,18 @@ def log_to_wandb(folder, run_params, hyperparams, datasets_results, overwrite=Fa
             with open(os.path.join(folder, "wandb.txt"), "r") as f:
                 run_id = f.read().strip().split(": ")[1]
             # Get the existing run
-            existing_run = wandb.Api().run(f"affex/{run_id}")
-            # Delete the existing run
-            existing_run.delete()
-            # Remove the existing wandb.txt file
+            try:
+                existing_run = wandb.Api().run(f"affex/{run_id}")
+                # Delete the existing run
+                existing_run.delete()
+                # Remove the existing wandb.txt file
+            except wandb.errors.errors.CommError as e:
+                print(f"Error deleting existing run: {e}, continuing without deleting.")
             os.remove(os.path.join(folder, "wandb.txt"))
+            
+    group = hyperparams.get("grid", None)
     
-    wandb.init(project="affex", config=run_params, group=hyperparams.get("grid", None))
+    wandb.init(project="affex", config=run_params, group=group)
     
     for dataset_name, dataframe in datasets_results.items():
         wandb.log({dataset_name: wandb.Table(dataframe=dataframe)})
@@ -56,6 +63,44 @@ def log_to_wandb(folder, run_params, hyperparams, datasets_results, overwrite=Fa
         f.write(f"Run ID: {run_id}\n")
     
     print("Logged to Weights & Biases.")
+
+
+def collect_single_job(folder, params, hyperparams, datasets, use_wandb, overwrite):
+    write_yaml(params, os.path.join(folder, "params.yaml"))
+
+    print(f"Found {len(datasets)} datasets in {folder}")
+    
+    datasets_results = {}
+
+    for dataset_name, csv_file in datasets.items():
+        print(f"Dataset: {dataset_name}")
+        datasets_results[dataset_name] = pd.read_csv(csv_file)
+    
+    if use_wandb:
+        log_to_wandb(folder, params, hyperparams, datasets_results, overwrite=overwrite)
+
+    
+def collect_multi_job(folder, params, hyperparams, datasets, use_wandb, overwrite):
+    write_yaml(params, os.path.join(folder, "params.yaml"))
+
+    print(f"Found {len(datasets)} datasets in {folder}")
+    
+    datasets_results = {}
+
+    for dataset_name, csv_files in datasets.items():
+        print(f"Dataset: {dataset_name}")
+        dataframes = [
+            pd.read_csv(csv_file) for csv_file in csv_files
+        ]
+        dataframe = pd.concat(dataframes, ignore_index=True)
+        dataframe.to_csv(
+            os.path.join(folder, f"{dataset_name}.csv"),
+            index=False,
+        )
+        datasets_results[dataset_name] = dataframe
+    
+    if use_wandb:
+        log_to_wandb(folder, params, hyperparams, datasets_results, overwrite=overwrite)
 
 
 def runs_collect(folder, use_wandb=True, overwrite=False):
@@ -87,26 +132,8 @@ def runs_collect(folder, use_wandb=True, overwrite=False):
         params = load_yaml(os.path.join(folder, processes[0], "params.yaml"))
         del params["process_id"]
         params["num_processes"] = len(processes)
-        write_yaml(params, os.path.join(folder, "params.yaml"))
 
-        print(f"Found {len(datasets)} datasets in {folder}")
-        
-        datasets_results = {}
-
-        for dataset_name, csv_files in datasets.items():
-            print(f"Dataset: {dataset_name}")
-            dataframes = [
-                pd.read_csv(csv_file) for csv_file in csv_files
-            ]
-            dataframe = pd.concat(dataframes, ignore_index=True)
-            dataframe.to_csv(
-                os.path.join(folder, f"{dataset_name}.csv"),
-                index=False,
-            )
-            datasets_results[dataset_name] = dataframe
-            
-        if use_wandb:
-            log_to_wandb(folder, params, hyperparams, datasets_results, overwrite=overwrite)
+        collect_multi_job(folder, params, hyperparams, datasets, use_wandb, overwrite)
             
         print(f"Collected {len(processes)} processes from {folder}")
     elif len(runs) > 0 and len(processes) == 0:
@@ -116,6 +143,20 @@ def runs_collect(folder, use_wandb=True, overwrite=False):
             print(f"Collecting run: {run_path}")
             runs_collect(run_path, use_wandb=use_wandb, overwrite=overwrite)
     elif len(processes) == 0 and len(runs) == 0:
-        print("No subdirectories found in the folder.")
+        files = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and f.endswith(".csv")]
+        score_files = [f for f in files if f.startswith("scores_")]
+        if len(score_files) > 0:
+            print("Collecting scores from files in the folder...")
+            hyperparams = load_yaml(os.path.join(folder, "..", "hyperparams.yaml"))
+
+            datasets = {}
+            for score_file in score_files:
+                dataset_name = score_file.replace("scores_", "").replace(".csv", "")
+                datasets[dataset_name] = os.path.join(folder, score_file)
+
+            params = load_yaml(os.path.join(folder, "params.yaml"))
+            collect_single_job(folder, params, hyperparams, datasets, use_wandb, overwrite)
+        else:
+            print("No subdirectories and no score file found in the folder.")
     else:
         print("Both processes and runs found in the folder, please specify one type to collect, something is wrong.")

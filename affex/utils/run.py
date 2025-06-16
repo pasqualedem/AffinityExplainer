@@ -70,7 +70,7 @@ class ParallelRun:
         else:
             self.logger.info("Running a single process")
             self.launch_process(
-                self.params, run_name, out_file, param_file, only_create, script_args
+                self.params, self.run_name, out_file, param_file, only_create, script_args
             )
 
     def launch_process(

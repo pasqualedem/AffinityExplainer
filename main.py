@@ -42,7 +42,7 @@ def cli():
 )
 def grid(parameters, parallel, only_create=False):
     parameters = load_yaml(parameters)
-    grid_name = parameters.pop("grid")
+    grid_name = parameters["grid"]
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     grid_name = f"{current_time}_{grid_name}"
     log_folder = os.path.join(OUT_FOLDER, grid_name)

@@ -163,7 +163,7 @@ class FSSCausalMetric(Metric):
         r"""Interactive evaluation: yields intermediate states."""
         yield from self._evaluate_core(input_dict, explanation, explanation_mask, interactive=True)
 
-    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=True):
+    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=False):
         r"""Efficiently evaluate big batch of images.
 
         Args:
