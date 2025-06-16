@@ -226,23 +226,31 @@ class AffinityExplainer:
             for level_attn in class_attns:
                 hw = level_attn.shape[-2]
                 h = w = int(hw ** 0.5)
-                level_attn = F.softmax(level_attn, dim=-1)
-                mask_level = rearrange(resize(mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST), "n h w -> h (n w)")
-                transposed_level_attn = rearrange(level_attn, "b (hq wq) (n hs ws) -> (b hs ws n) hq wq", n=class_shots, hs=h, ws=w, hq=h, wq=w)
-                reshaped_level_attn = rearrange(level_attn, "b (hq wq) (n hs ws) -> (b hq wq n) hs ws", n=class_shots, hs=h, ws=w, hq=h, wq=w)
-                transposed_level_attn = resize(transposed_level_attn, explanation_size)
-                reshaped_level_attn = resize(reshaped_level_attn, explanation_size)
-                normalized_level_attn = transposed_level_attn / (transposed_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
-                reshaped_level_attn = reshaped_level_attn / (reshaped_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
-                reshaped_level_attn = rearrange(reshaped_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
-                level_prediction = rearrange((reshaped_level_attn * mask_level).sum(dim=(-1, -2)), "(h w) -> 1 h w", h=h, w=w)
-                level_contribution = normalized_level_attn[:, explanation_mask[chosen_class]].mean(dim=1)
+                
+                # Get the attention map for the chosen class 
+                level_contribution = F.softmax(level_attn, dim=-1)
+                # mask_level = rearrange(resize(mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST), "n h w -> h (n w)")
+                
+                # Transpose and resize the attention map
+                level_contribution = rearrange(level_contribution, "b (hq wq) (n hs ws) -> (b hs ws n) hq wq", n=class_shots, hs=h, ws=w, hq=h, wq=w)
+                level_contribution = resize(level_contribution, explanation_size)
+                # reshaped_level_attn = rearrange(level_attn, "b (hq wq) (n hs ws) -> (b hq wq n) hs ws", n=class_shots, hs=h, ws=w, hq=h, wq=w)
+                # reshaped_level_attn = resize(reshaped_level_attn, explanation_size)
+                
+                # Normalize the attention map
+                level_contribution = level_contribution / (level_contribution.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                # reshaped_level_attn = reshaped_level_attn / (reshaped_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                # reshaped_level_attn = rearrange(reshaped_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
+                # level_prediction = rearrange((reshaped_level_attn * mask_level).sum(dim=(-1, -2)), "(h w) -> 1 h w", h=h, w=w)
+                
+                # Get the mean contribution for the chosen class
+                level_contribution = level_contribution[:, explanation_mask[chosen_class]].mean(dim=1)
                 level_contribution = rearrange(level_contribution, "(b hs ws n) -> (b n) hs ws", hs=h, ws=w, n=class_shots)
-                resized_level_contribution = resize(level_contribution, explanation_size, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
-                resized_level_contribution = rearrange(resized_level_contribution, "(b n) h w -> b n h w", n=class_shots)
-                normalized_level_contribution = resized_level_contribution / (resized_level_contribution.sum(dim=(-1, -2, -3), keepdim=True) + 1e-6)
-                level_contributions.append(normalized_level_contribution)
-                level_predictions.append(level_prediction)
+                level_contribution = resize(level_contribution, explanation_size, interpolation=TvT.InterpolationMode.BILINEAR, antialias=False)
+                level_contribution = rearrange(level_contribution, "(b n) h w -> b n h w", n=class_shots)
+                level_contribution = level_contribution / (level_contribution.sum(dim=(-1, -2, -3), keepdim=True) + 1e-6)
+                level_contributions.append(level_contribution)
+                # level_predictions.append(level_prediction)
 
             contrib_seq = torch.stack(level_contributions, dim=1)  # B C N H W
             mean_contrib = contrib_seq.mean(dim=0)
