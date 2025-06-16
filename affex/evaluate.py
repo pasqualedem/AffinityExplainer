@@ -177,6 +177,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
                 explanation_mask=explanation_mask,
                 explanation_size=explanation_size,
             )
+            
             assert len(explanation) == 1, "Only support one class for now"
             explanation = explanation[0]
             
@@ -194,6 +195,9 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
         
             if i % log_frequency == 0:
                 log_step(input_dict, gt, result, explanation, metrics, run_name, i)
+                
+            # clean memory
+            torch.cuda.empty_cache()
             
         daucs = scores["dauc_aucs"]
         iaucs = scores["iauc_aucs"]

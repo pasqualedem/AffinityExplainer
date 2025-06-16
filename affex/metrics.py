@@ -57,7 +57,7 @@ def get_substrate_fn(substrate, kernel_size=3, sigma=1.0):
 
 class FSSCausalMetric(Metric):
 
-    def __init__(self, model, mode, step, substrate_fn):
+    def __init__(self, model, mode, step=None, threshold_step=None, substrate_fn="zero"):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -70,7 +70,13 @@ class FSSCausalMetric(Metric):
         assert mode in ['del', 'ins']
         self.model = model
         self.mode = mode
+        
+        assert step or threshold_step, "Either step or threshold_step must be provided."
+        # Only one of them should be provided
+        assert not (step and threshold_step), "Only one of step or threshold_step should be provided."
+        
         self.step = step
+        self.threshold_step = threshold_step
         self.substrate_fn = get_substrate_fn(substrate_fn)
         self.reduce = lambda x : torch.mean(x, dim=-1)
         
@@ -79,6 +85,7 @@ class FSSCausalMetric(Metric):
         self.xauc = None
         self.scores = None
         self.n_steps = None
+        self.step_intervals = None
         
         self.results = []
         
@@ -187,14 +194,15 @@ class FSSCausalMetric(Metric):
             preds = F.softmax(result[ResultDict.LOGITS], dim=1)
             preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
         top = torch.argmax(preds, -1)
-        self.n_steps = (MHW + self.step - 1) // self.step
+        ordered_saliency, salient_order = torch.sort(rearrange(explanation, "B M H W -> B (M H W)", M=M, H=H, W=W), dim=1, descending=True)
+        assert salient_order.shape == (B, MHW), f"Expected shape {(B, MHW)}, got {salient_order.shape}"
+        
+        self.set_steps(MHW, ordered_saliency)
         self.mid_status_frequency = np.unique(
             np.round(np.logspace(0, np.log10(self.n_steps), num=30)).astype(int)
         ).tolist()
-        scores = torch.empty((self.n_steps + 1, B))
-        salient_order = torch.sort(rearrange(explanation, "B M H W -> B (M H W)", M=M, H=H, W=W), dim=1, descending=True)[1]
-        assert salient_order.shape == (B, MHW), f"Expected shape {(B, MHW)}, got {salient_order.shape}"
 
+        scores = torch.empty((self.n_steps + 1, B))
         start, finish, caption = self.get_start_finish(input_dict)
 
         # While not all pixels are changed
@@ -210,7 +218,7 @@ class FSSCausalMetric(Metric):
             top_preds = preds[:, top] # Take the top classes for each batch
             scores[i] = top_preds
             # Change specified number of most salient pixels to substrate pixels
-            coords = salient_order[:, self.step * i:self.step * (i + 1)]
+            coords = salient_order[:, self.step_intervals[i]:self.step_intervals[i+1]]
             start = self.finish_to_start(start, finish, coords)
             
             if i in self.mid_status_frequency:
@@ -221,6 +229,27 @@ class FSSCausalMetric(Metric):
                 yield start, i, scores[:i+1]
         self.xauc = auc(scores.mean(1))
         self.scores = scores
+        
+    def set_steps(self, MHW, ordered_saliency):
+        r"""Set the number of steps and step intervals based on the MHW and step size."""
+        if self.step is not None:
+            self.n_steps = (MHW + self.step - 1) // self.step
+            self.step_intervals = [self.step * i for i in range(self.n_steps + 2)]
+        else:
+            assert self.threshold_step < 1.0 and self.threshold_step > 0.0, "threshold_step must be in (0, 1)"
+            self.n_steps = int(1 / self.threshold_step) - 1
+            
+            # Make ascending intervals
+            ordered_saliency = ordered_saliency.flip(dims=[1])
+            # Precompute all threshold edges
+            edges = torch.arange(0, 1 + self.threshold_step, self.threshold_step)
+            edges = edges.unsqueeze(0).expand(ordered_saliency.shape[0], -1).to(ordered_saliency.device)
+            num_elems = ordered_saliency.shape[1]
+            
+            assert ordered_saliency.shape[0] == 1, "Only support batch size of 1 for now"
+            
+            # Find indices of the edges in the ordered saliency map and flip them
+            self.step_intervals = num_elems - torch.searchsorted(ordered_saliency, edges).flip(dims=[1])[0]
         
     def update(self, input_dict, explanation, explanation_mask):
         r"""Update metric with new batch of images.

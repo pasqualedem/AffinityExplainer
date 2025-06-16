@@ -9,7 +9,7 @@ parameters:
   log_frequency: [50]
 
   metric:
-    step: [1000]
+    step: [100000]
     substrate_fn: [zero]
 
   num_processes: [5]
