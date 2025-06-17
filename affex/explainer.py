@@ -223,12 +223,12 @@ class AffinityExplainer:
 
             level_contributions = []
             level_predictions = []
-            for level_attn in class_attns:
-                hw = level_attn.shape[-2]
+            for level_contribution in class_attns:
+                hw = level_contribution.shape[-2]
                 h = w = int(hw ** 0.5)
                 
                 # Get the attention map for the chosen class 
-                level_contribution = F.softmax(level_attn, dim=-1)
+                level_contribution = F.softmax(level_contribution, dim=-1)
                 # mask_level = rearrange(resize(mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST), "n h w -> h (n w)")
                 
                 # Transpose and resize the attention map
@@ -238,7 +238,9 @@ class AffinityExplainer:
                 # reshaped_level_attn = resize(reshaped_level_attn, explanation_size)
                 
                 # Normalize the attention map
-                level_contribution = level_contribution / (level_contribution.sum(dim=(-1, -2), keepdim=True) + 1e-6)
+                norm = level_contribution.sum(dim=(-1, -2), keepdim=True).add_(1e-6) # In place normalization
+                level_contribution.div_(norm)
+                # level_contribution = level_contribution / (level_contribution.sum(dim=(-1, -2), keepdim=True) + 1e-6) # Not in place normalization
                 # reshaped_level_attn = reshaped_level_attn / (reshaped_level_attn.sum(dim=(-1, -2), keepdim=True) + 1e-6)
                 # reshaped_level_attn = rearrange(reshaped_level_attn, "(b n) h w -> b h (n w)", n=class_shots)
                 # level_prediction = rearrange((reshaped_level_attn * mask_level).sum(dim=(-1, -2)), "(h w) -> 1 h w", h=h, w=w)

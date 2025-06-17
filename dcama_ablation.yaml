@@ -3,16 +3,16 @@ grid: DCAMAblation
 parameters:
   model: [dcama]
   explainer:
-    name: [affinity, integrated_gradients, saliency, random]
+    # name: [affinity, integrated_gradients, saliency, random]
+    name: [affinity]
 
   explanation_masking: [logits]
   log_frequency: [50]
 
   metric:
-    step: [10000, 50000, 100000]
+    # step: [10000, 50000, 100000]
+    n_steps: [5]
     substrate_fn: [zero]
-
-  # num_processes: [5]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
@@ -34,3 +34,5 @@ parameters:
   dataloader:
     num_workers: [16]
     batch_size: [1]
+    csv_folder: [data_csv]
+    # num_processes: [5]

@@ -2,6 +2,7 @@ OUT_FOLDER = "out"
 
 import copy
 import os
+import random
 import uuid
 from matplotlib import pyplot as plt
 import numpy as np
@@ -33,8 +34,10 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-    
+    random.seed(seed)
+    np.random.seed(seed)
+
+
 def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx):
     """Log the step results."""
     outfolder = os.path.join(outfolder, f"batch_{batch_idx}")
@@ -116,8 +119,6 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
         copy.deepcopy(parameters["dataset"]),
         copy.deepcopy(parameters["dataloader"]),
         num_processes=1,
-        process_idx=parameters.get("process_id", None),
-        working_dir=run_name,
     )
 
     explainer = build_explainer(
@@ -134,14 +135,12 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             "iauc": FSSCausalMetric(
                 model=model,
                 mode="ins",
-                step=parameters["metric"]["step"],
-                substrate_fn=parameters["metric"]["substrate_fn"],
+                **parameters["metric"]
             ),
             "dauc": FSSCausalMetric(
                 model=model,
                 mode="del",
-                step=parameters["metric"]["step"],
-                substrate_fn=parameters["metric"]["substrate_fn"],
+                **parameters["metric"]
             ),
         }
     )
@@ -195,9 +194,6 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
         
             if i % log_frequency == 0:
                 log_step(input_dict, gt, result, explanation, metrics, run_name, i)
-                
-            # clean memory
-            torch.cuda.empty_cache()
             
         daucs = scores["dauc_aucs"]
         iaucs = scores["iauc_aucs"]

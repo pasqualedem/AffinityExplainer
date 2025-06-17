@@ -60,7 +60,7 @@ def get_preprocessing(params):
         )
     
     
-def get_dataloaders(dataset_args, dataloader_args, num_processes, process_idx=None, working_dir=None):
+def get_dataloaders(dataset_args, dataloader_args, num_processes):
     preprocess = get_preprocessing(dataset_args)
 
     datasets_params = dataset_args.get("datasets")
@@ -69,6 +69,10 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes, process_idx=No
     val_possible_batch_example_nums = dataloader_args.pop(
         "val_possible_batch_example_nums", possible_batch_example_nums
     )
+    num_split_processes = dataloader_args.pop("num_processes", None)
+    process_id = dataloader_args.pop("process_id", None)
+    csv_folder = dataloader_args.pop("csv_folder", None)
+    
     if "batch_size" in dataloader_args:
         batch_size = dataloader_args["batch_size"]
         dataloader_args.pop("batch_size")
@@ -119,11 +123,17 @@ def get_dataloaders(dataset_args, dataloader_args, num_processes, process_idx=No
                 datasets_params={dataset_name: params},
                 common_params={**common_params, "preprocess": preprocess},
             )
-            if process_idx is not None:
-                if working_dir is None:
-                    raise ValueError("working_dir must be provided when process_idx is set")
-                val_dataset_csv = pd.read_csv(f"{working_dir}/{dataset}.csv")
+            if csv_folder is not None:
+                val_dataset_csv = pd.read_csv(f"{csv_folder}/{dataset}.csv")
                 val_dataset_csv = val_dataset_csv.applymap(eval)
+                
+                if process_id is not None and num_split_processes is not None:
+                    # keep only the rows for the current process, row_idx % num_processes == process_idx
+                    val_dataset_csv = val_dataset_csv[
+                        val_dataset_csv.index % num_split_processes == process_id
+                    ]
+                    # reset index
+                    val_dataset_csv.reset_index(drop=True, inplace=True)
             else:
                 val_dataset_csv = None
             
