@@ -208,7 +208,7 @@ class FSSCausalMetric(Metric):
         start, finish, caption = self.get_start_finish(input_dict)
 
         # While not all pixels are changed
-        for i in tqdm(range(self.computed_n_steps+1), desc=caption + 'pixels', disable=not verbose):
+        for i in tqdm(range(self.computed_n_steps + 1), desc=caption + 'pixels', disable=not verbose):
             # clear_output()
             # display(unnormalize(start[BatchKeys.IMAGES][0, 1:]).rgb)
             # display(unnormalize(finish[BatchKeys.IMAGES][0, 1:]).rgb)
@@ -219,6 +219,9 @@ class FSSCausalMetric(Metric):
             preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
             top_preds = preds[:, top] # Take the top classes for each batch
             scores[i] = top_preds
+            
+            if i == self.computed_n_steps: # If we are at the last step, we don't need to change anything
+                break
             # Change specified number of most salient pixels to substrate pixels
             coords = salient_order[:, self.step_intervals[i]:self.step_intervals[i+1]]
             start = self.finish_to_start(start, finish, coords)
@@ -236,14 +239,17 @@ class FSSCausalMetric(Metric):
         r"""Set the number of steps and step intervals based on the MHW and step size."""
         if self.n_steps is not None:
             assert self.n_steps > 0, "n_steps must be a positive integer"
-            self.computed_n_steps = self.n_steps - 1
+            self.computed_n_steps = self.n_steps
             self.step_intervals = [MHW * i // self.n_steps for i in range(self.n_steps + 1)]
         elif self.step is not None:
-            self.computed_n_steps = (MHW + self.step - 1) // self.step
-            self.step_intervals = [self.step * i for i in range(self.computed_n_steps + 2)]
+            self.computed_n_steps = MHW // self.step + 1
+            self.step_intervals = [self.step * i for i in range(self.computed_n_steps)] + [MHW]
+            if MHW % self.step == 0:
+                self.step_intervals.pop()  # Remove the last step if it is equal to MHW
+                self.computed_n_steps -= 1
         else:
             assert self.threshold_step < 1.0 and self.threshold_step > 0.0, "threshold_step must be in (0, 1)"
-            self.computed_n_steps = int(1 / self.threshold_step) - 1
+            self.computed_n_steps = int(1 / self.threshold_step)
             
             # Make ascending intervals
             ordered_saliency = ordered_saliency.flip(dims=[1])

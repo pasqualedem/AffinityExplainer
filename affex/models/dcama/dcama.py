@@ -640,12 +640,15 @@ class DCAMAMultiClass(DCAMA):
         return logit_mask
 
 
-    def feature_ablation(self, result, chosen_class, mask, n_shots=None, image_size=None):
+    def feature_ablation(self, result, chosen_class, mask, n_shots=None, explanation_size=None):
         query_feats = result[ResultDict.QUERY_FEATS][chosen_class]
         support_feats = result[ResultDict.SUPPORT_FEATS][chosen_class]
         coarse_masks = tuple(result[ResultDict.COARSE_MASKS][chosen_class])
         with torch.no_grad():
-            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)[:, :, mask[chosen_class]].mean(dim=2)
+            orig_out = self.pred_layer(*coarse_masks, query_feats, support_feats, n_shots)
+            if explanation_size is not None and orig_out.shape[-2] != explanation_size:
+                orig_out = F.interpolate(orig_out, size=explanation_size, mode="bilinear", align_corners=False)
+            orig_out = orig_out[:, :, mask[chosen_class]].mean(dim=2)
         diffs = []
         for i in range(len(coarse_masks)):
             for j in range(coarse_masks[i].shape[1]):
@@ -653,8 +656,11 @@ class DCAMAMultiClass(DCAMA):
                 new_input[:, j] = 0
                 new_expl_input = [*coarse_masks[0:i], *[new_input], *coarse_masks[i+1:]]
                 with torch.no_grad():
-                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)[:, :, mask[chosen_class]].mean(dim=2)
+                    new_out = self.pred_layer(*new_expl_input, query_feats, support_feats, n_shots)
+                    if explanation_size is not None and new_out.shape[-2] != explanation_size:
+                        new_out = F.interpolate(new_out, size=explanation_size, mode="bilinear", align_corners=False)
+                    new_out = new_out[:, :, mask[chosen_class]].mean(dim=2)
                 diffs.append(orig_out - new_out)
-        
+
         abl_attr = sum_scale(torch.cat([torch.abs(diff[:, 1]) for diff in diffs]))
         return abl_attr

@@ -257,7 +257,7 @@ class AffinityExplainer:
             contrib_seq = torch.stack(level_contributions, dim=1)  # B C N H W
             mean_contrib = contrib_seq.mean(dim=0)
 
-            cmask_contrib = self.model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, image_size=explanation_size)
+            cmask_contrib = self.model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, explanation_size=explanation_size)
             if cmask_contrib is None:
                 cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
 
