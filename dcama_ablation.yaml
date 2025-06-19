@@ -1,17 +1,15 @@
-grid: DCAMAblation
+grid: DCAMAblationTest
 
 parameters:
   model: [dcama]
   explainer:
-    name: [integrated_gradients, saliency, random]
-    # name: [affinity]
+    name: [affinity, integrated_gradients, saliency, random]
 
   explanation_masking: [logits]
   log_frequency: [50]
 
   metric:
-    # step: [100000]
-    n_steps: [5]
+    n_steps: [10, 100, 1000]
     substrate_fn: [zero]
 
   dataset: # parameters depending on the class you defined for the dataset
