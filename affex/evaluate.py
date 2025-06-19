@@ -195,13 +195,13 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             if i % log_frequency == 0:
                 log_step(input_dict, gt, result, explanation, metrics, run_name, i)
             
-        daucs = scores["dauc_aucs"]
-        iaucs = scores["iauc_aucs"]
-            
-        scores_df = pd.DataFrame(
-            {
-                "dauc_aucs": torch.tensor(daucs).tolist(),
-                "iauc_aucs": torch.tensor(iaucs).tolist(),
-            }
-        )
-        scores_df.to_csv(os.path.join(run_name, f"scores_{dataset_name}.csv"), index=False)
+            daucs = scores["dauc_aucs"]
+            iaucs = scores["iauc_aucs"]
+                
+            scores_df = pd.DataFrame(
+                {
+                    "dauc_aucs": torch.tensor(daucs).tolist(),
+                    "iauc_aucs": torch.tensor(iaucs).tolist(),
+                }
+            )
+            scores_df.to_csv(os.path.join(run_name, f"scores_{dataset_name}.csv"), index=False)

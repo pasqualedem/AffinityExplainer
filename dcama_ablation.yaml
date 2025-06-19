@@ -1,9 +1,9 @@
-grid: DCAMAblationTest
+grid: DCAMAblation
 
 parameters:
   model: [dcama]
   explainer:
-    name: [affinity, integrated_gradients, saliency, random]
+    name: [affinity, saliency, random]
 
   explanation_masking: [logits]
   log_frequency: [50]
@@ -33,4 +33,4 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
-    # num_processes: [5]
+    num_processes: [4]
