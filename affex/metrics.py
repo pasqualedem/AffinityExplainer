@@ -57,7 +57,7 @@ def get_substrate_fn(substrate, kernel_size=3, sigma=1.0):
 
 class FSSCausalMetric(Metric):
 
-    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero"):
+    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero", percentage=1.0):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -78,6 +78,7 @@ class FSSCausalMetric(Metric):
         self.step = step
         self.threshold_step = threshold_step
         self.n_steps = n_steps
+        self.percentage = percentage
         
         self.substrate_fn = get_substrate_fn(substrate_fn)
         self.reduce = lambda x : torch.mean(x, dim=-1)
@@ -239,7 +240,7 @@ class FSSCausalMetric(Metric):
         r"""Set the number of steps and step intervals based on the MHW and step size."""
         if self.n_steps is not None:
             assert self.n_steps > 0, "n_steps must be a positive integer"
-            self.computed_n_steps = self.n_steps
+            self.computed_n_steps = int(self.n_steps * self.percentage)
             self.step_intervals = [MHW * i // self.n_steps for i in range(self.n_steps + 1)]
         elif self.step is not None:
             self.computed_n_steps = MHW // self.step + 1
@@ -247,6 +248,7 @@ class FSSCausalMetric(Metric):
             if MHW % self.step == 0:
                 self.step_intervals.pop()  # Remove the last step if it is equal to MHW
                 self.computed_n_steps -= 1
+            self.computed_n_steps = int(self.computed_n_steps * self.percentage)
         else:
             assert self.threshold_step < 1.0 and self.threshold_step > 0.0, "threshold_step must be in (0, 1)"
             self.computed_n_steps = int(1 / self.threshold_step)

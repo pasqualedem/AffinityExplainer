@@ -130,20 +130,21 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
 
     masking_type = parameters["explanation_masking"]
     explanation_size = parameters.get("explanation_size", image_size)
-    metrics = MetricCollection(
-        {
-            "iauc": FSSCausalMetric(
+    metrics = {}
+    
+    if not parameters.get("disable_auc", False):
+        metrics["iauc"] = FSSCausalMetric(
                 model=model,
                 mode="ins",
                 **parameters["metric"]
-            ),
-            "dauc": FSSCausalMetric(
-                model=model,
-                mode="del",
-                **parameters["metric"]
-            ),
-        }
-    )
+            )
+    if not parameters.get("disable_dauc", False):
+        metrics["dauc"] = FSSCausalMetric(
+            model=model,
+            mode="del",
+            **parameters["metric"]
+        )
+    metrics = MetricCollection(metrics)
 
     for dataset_name, val_dataloader in val.items():
         logger.info(f"Evaluating {dataset_name} dataset")
@@ -187,21 +188,29 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
                 explanation_mask=explanation_mask,
             )
             scores = metrics.compute()
-            dauc = scores["dauc_auc"]
-            iauc = scores["iauc_auc"]
-            
-            logger.info(f"iAUC: {iauc:.4f}, dAUC: {dauc:.4f}")
-        
+            if len(metrics.keys()) == 1:
+                key_name = list(metrics.keys())[0]
+                scores = {f"{key_name}_{k}": v for k, v in scores.items()}
+
+            log_string = ""
+            if scores.get("iauc_auc") is not None:
+                log_string += f"iAUC: {scores['iauc_auc']:.4f}, "
+            if scores.get("dauc_auc") is not None:
+                log_string += f"dAUC: {scores['dauc_auc']:.4f}, "
+                
+            logger.info(
+                f"Batch {i} - {dataset_name}: {log_string}"
+            )
+
             if i % log_frequency == 0:
                 log_step(input_dict, gt, result, explanation, metrics, run_name, i)
-            
-            daucs = scores["dauc_aucs"]
-            iaucs = scores["iauc_aucs"]
-                
-            scores_df = pd.DataFrame(
-                {
-                    "dauc_aucs": torch.tensor(daucs).tolist(),
-                    "iauc_aucs": torch.tensor(iaucs).tolist(),
-                }
-            )
+
+
+            metrics_dict = {}
+            if scores.get("dauc_aucs") is not None:
+                metrics_dict["dauc_aucs"] = torch.tensor(scores["dauc_aucs"]).tolist()
+            if scores.get("iauc_aucs") is not None:
+                metrics_dict["iauc_aucs"] = torch.tensor(scores["iauc_aucs"]).tolist()
+
+            scores_df = pd.DataFrame(metrics_dict)
             scores_df.to_csv(os.path.join(run_name, f"scores_{dataset_name}.csv"), index=False)

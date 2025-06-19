@@ -89,10 +89,13 @@ def collect_multi_job(folder, params, hyperparams, datasets, use_wandb, overwrit
 
     for dataset_name, csv_files in datasets.items():
         print(f"Dataset: {dataset_name}")
-        dataframes = [
-            pd.read_csv(csv_file) for csv_file in csv_files
-        ]
-        dataframe = pd.concat(dataframes, ignore_index=True)
+        # path is **/p_<process_id>/scores_<dataset_name>.csv, let's extract the process id paired with the dataframe (process_id, dataframe)
+        dataframes = {int(csv_file.split("/")[-2].replace("p_", "")): pd.read_csv(csv_file) for csv_file in csv_files}
+        # Each process processed the prcoess_id % num_processes elements of the dataset, so we need to combine them
+        num_processes = len(dataframes)
+        for process_id, df in dataframes.items():
+            df.index = [i * num_processes + process_id for i in range(len(dataframes[process_id]))]
+        dataframe = pd.concat(dataframes.values()).sort_index()
         dataframe.to_csv(
             os.path.join(folder, f"{dataset_name}.csv"),
             index=False,
