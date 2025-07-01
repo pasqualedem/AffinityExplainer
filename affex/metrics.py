@@ -283,8 +283,8 @@ class FSSCausalMetric(Metric):
             raise ValueError("No results to compute.")
         xaucs, scores = zip(*self.results)
         # Remove nan values from xaucs
-        xaucs = [xauc for xauc in xaucs if not np.isnan(xauc)]
-        self.xauc = np.mean(xaucs)
+        notna_xaucs = [xauc for xauc in xaucs if not np.isnan(xauc)]
+        self.xauc = np.mean(notna_xaucs)
         self.scores = np.mean(scores, axis=0)
         return {"auc": self.xauc, "scores": self.scores, "aucs": xaucs}
     
