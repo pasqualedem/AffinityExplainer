@@ -9,7 +9,7 @@ parameters:
   log_frequency: [50]
 
   metric:
-    n_steps: [10, 100, 1000]
+    n_steps: [10, 25, 50, 75, 100, 1000]
     substrate_fn: [zero]
 
   dataset: # parameters depending on the class you defined for the dataset
@@ -33,4 +33,4 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
-    num_processes: [4]
+    # num_processes: [4]
