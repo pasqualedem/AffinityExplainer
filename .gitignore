@@ -108,6 +108,7 @@ exp_log.csv
 data/raw
 notebooks/demo
 /data
+/artifacts
 tmp
 logs
 out
