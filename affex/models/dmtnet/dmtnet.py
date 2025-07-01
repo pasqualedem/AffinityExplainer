@@ -273,7 +273,7 @@ class DMTNetwork(nn.Module):
             max_vote = max_vote.max(dim=0)[0].view(bsz, 1, 1)
             pred_mask = logit_mask_agg.float() / max_vote
         else: # logit prediction
-            pred_mask = torch.stack(logit_mask_orig).softmax(dim=2).max(dim=0).values
+            pred_mask = torch.stack(logit_mask_orig).max(dim=0).values
         # pred_mask[pred_mask < 0.5] = 0
         # pred_mask[pred_mask >= 0.5] = 1
 
