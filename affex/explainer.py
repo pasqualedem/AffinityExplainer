@@ -39,7 +39,7 @@ class LamLayerGradCam(LayerGradCam):
 
 class TraditionalExplainer(nn.Module):
     methods = {
-        "integrated_gradients": (IntegratedGradients, {}, {"n_steps": 100, "internal_batch_size": 1}),
+        "integrated_gradients": (IntegratedGradients, {}, {"n_steps": 50, "internal_batch_size": 1}),
         "saliency": (Saliency, {}, {}),
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
     }
