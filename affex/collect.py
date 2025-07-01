@@ -97,7 +97,7 @@ def collect_multi_job(folder, params, hyperparams, datasets, use_wandb, overwrit
             df.index = [i * num_processes + process_id for i in range(len(dataframes[process_id]))]
         dataframe = pd.concat(dataframes.values()).sort_index()
         dataframe.to_csv(
-            os.path.join(folder, f"{dataset_name}.csv"),
+            os.path.join(folder, f"scores_{dataset_name}.csv"),
             index=False,
         )
         datasets_results[dataset_name] = dataframe
@@ -133,8 +133,8 @@ def runs_collect(folder, use_wandb=True, overwrite=False):
                 datasets[dataset_name].append(os.path.join(subfolder_path, csv))
 
         params = load_yaml(os.path.join(folder, processes[0], "params.yaml"))
-        del params["process_id"]
-        params["num_processes"] = len(processes)
+        del params["dataloader"]["process_id"]
+        params["dataloader"]["num_processes"] = len(processes)
 
         collect_multi_job(folder, params, hyperparams, datasets, use_wandb, overwrite)
             
