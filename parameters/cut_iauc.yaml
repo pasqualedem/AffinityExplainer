@@ -1,18 +1,19 @@
 grid: CUTIAUC
 
 parameters:
-  model: [dcama]
+  model: [dcama, dmtnet]
   explainer:
-    name: [affinity]
+    name: [saliency]
 
   explanation_masking: [logits]
+  # metric_masking: [all]
   log_frequency: [50]
   disable_dauc: [True]
   
   metric:
-    n_steps: [100]
+    n_steps: [5]
     substrate_fn: [zero]
-    percentage: [0.05]
+    percentage: [0.01]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:

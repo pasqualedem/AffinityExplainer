@@ -173,6 +173,8 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
         )[:, 0]
         gt[gt == -100] = 0  # Convert -100 to 0 for ground truth
         explanation_mask = F.one_hot(gt.long(), num_classes=n_ways+1).permute(0, 3, 1, 2)[0].bool()[1]
+    elif masking_type == "all":
+        explanation_mask = torch.ones((target_shape, target_shape), dtype=torch.bool)
     
     return explanation_mask
 

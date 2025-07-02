@@ -60,9 +60,11 @@ def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx
     for metric_name, metric_value in metrics.items():
         mid_statuses = metric_value.mid_statuses
         for mid_status in mid_statuses:
-            j, mig_images, mid_masks, top_pred = mid_status
+            j, mig_images, mid_masks, probs, top_pred = mid_status
             unnormalize(mig_images).rgb.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_img.png"))
             mid_masks.chans.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_mask.png"))
+            probs.chans.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_probs.png"))
+            create_rgb_segmentation(probs.cpu()).rgb.fig.savefig(os.path.join(metrics_folders, f"{metric_name}_{j}_seg.png"))
             
         scores = metric_value.compute()["scores"]
         scores_df = pd.DataFrame(scores)
@@ -129,6 +131,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     )
 
     masking_type = parameters["explanation_masking"]
+    metric_masking_type = parameters.get("metric_masking", masking_type)
     explanation_size = parameters.get("explanation_size", image_size)
     metrics = {}
     
@@ -170,6 +173,9 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
 
             explanation_size = explanation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
             explanation_mask = get_explanation_mask(input_dict, gt, result, explanation_size, masking_type)
+            metric_mask = get_explanation_mask(
+                input_dict, gt, result, explanation_size, metric_masking_type
+            ) if metric_masking_type != masking_type else explanation_mask
 
             bar.set_description(f"Calculating explanation")
             explanation = explainer.explain(
@@ -185,7 +191,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             metrics.update(
                 input_dict=input_dict,
                 explanation=explanation,
-                explanation_mask=explanation_mask,
+                explanation_mask=metric_mask,
             )
             scores = metrics.compute()
             if len(metrics.keys()) == 1:

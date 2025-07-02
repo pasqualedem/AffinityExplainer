@@ -57,7 +57,7 @@ def get_substrate_fn(substrate, kernel_size=3, sigma=1.0):
 
 class FSSCausalMetric(Metric):
 
-    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero", percentage=1.0):
+    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero", percentage=1.0, confidence_loss=False):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -79,6 +79,10 @@ class FSSCausalMetric(Metric):
         self.threshold_step = threshold_step
         self.n_steps = n_steps
         self.percentage = percentage
+        self.confidence_loss = confidence_loss
+        
+        if self.percentage is not None:
+            assert 0 < self.percentage < 1.0, "percentage must be in (0, 1)"
         
         self.substrate_fn = get_substrate_fn(substrate_fn)
         self.reduce = lambda x : torch.mean(x, dim=-1)
@@ -217,8 +221,8 @@ class FSSCausalMetric(Metric):
             with torch.no_grad():
                 result = self.model(to_device(start, device), postprocess=False)
                 preds = F.softmax(result[ResultDict.LOGITS], dim=1)
-            preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
-            top_preds = preds[:, top] # Take the top classes for each batch
+            reduced_preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
+            top_preds = reduced_preds[:, top] # Take the top classes for each batch
             scores[i] = top_preds
             
             if i == self.computed_n_steps: # If we are at the last step, we don't need to change anything
@@ -229,18 +233,29 @@ class FSSCausalMetric(Metric):
             
             if i in self.mid_status_frequency:
                 self.mid_statuses.append(
-                    (i, start[BatchKeys.IMAGES].clone().cpu(), start[BatchKeys.PROMPT_MASKS].clone().cpu(), top_preds.clone())
+                    (i, start[BatchKeys.IMAGES].clone().cpu(), start[BatchKeys.PROMPT_MASKS].clone().cpu(), preds, top_preds.clone())
                 )
             if interactive:
                 yield start, i, scores[:i+1]
-        self.xauc = auc(scores.mean(1))
+        
+        if self.confidence_loss:
+            # If confidence loss is used, the last step is the final state
+            full_confidence = scores[-1].clone()
+            reduced_scores = scores[:-1]  # Remove the last step from scores
+            # Compute the final score as the mean of all scores
+            self.xauc = torch.abs(full_confidence - auc(reduced_scores.mean(1)))
+        else:
+            self.xauc = auc(scores.mean(1))
+            
         self.scores = scores
         
     def set_steps(self, MHW, ordered_saliency):
         r"""Set the number of steps and step intervals based on the MHW and step size."""
         if self.n_steps is not None:
             assert self.n_steps > 0, "n_steps must be a positive integer"
-            self.computed_n_steps = int(self.n_steps * self.percentage)
+            self.computed_n_steps = self.n_steps
+            if self.percentage is not None and self.percentage < 1.0:
+                MHW = int(MHW * self.percentage)
             self.step_intervals = [MHW * i // self.n_steps for i in range(self.n_steps + 1)]
         elif self.step is not None:
             self.computed_n_steps = MHW // self.step + 1
@@ -248,7 +263,9 @@ class FSSCausalMetric(Metric):
             if MHW % self.step == 0:
                 self.step_intervals.pop()  # Remove the last step if it is equal to MHW
                 self.computed_n_steps -= 1
-            self.computed_n_steps = int(self.computed_n_steps * self.percentage)
+            self.computed_n_steps = int(self.computed_n_steps)
+            if self.percentage is not None and self.percentage < 1.0:
+                raise ValueError("percentage is not supported with step size, please use n_steps or threshold_step instead.")
         else:
             assert self.threshold_step < 1.0 and self.threshold_step > 0.0, "threshold_step must be in (0, 1)"
             self.computed_n_steps = int(1 / self.threshold_step)
@@ -264,6 +281,11 @@ class FSSCausalMetric(Metric):
             
             # Find indices of the edges in the ordered saliency map and flip them
             self.step_intervals = num_elems - torch.searchsorted(ordered_saliency, edges).flip(dims=[1])[0]
+            
+        if self.confidence_loss and self.step_intervals[-1] != MHW:
+            # If confidence loss is used, we need to add the last step
+            self.step_intervals.append(MHW)
+            self.computed_n_steps += 1
         
     def update(self, input_dict, explanation, explanation_mask):
         r"""Update metric with new batch of images.
