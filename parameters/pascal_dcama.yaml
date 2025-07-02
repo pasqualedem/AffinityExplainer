@@ -3,8 +3,7 @@ grid: Pascal
 parameters:
   model: [dcama]
   explainer:
-    # name: [affinity, saliency, random, integrated_gradients]
-    name: [integrated_gradients]
+    name: [affinity, saliency, random, integrated_gradients]
 
   explanation_masking: [logits]
   log_frequency: [50]
