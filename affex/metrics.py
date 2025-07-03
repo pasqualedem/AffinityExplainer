@@ -2,10 +2,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from einops import rearrange
+from einops import rearrange, repeat
 from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
 from torchmetrics import Metric
+from torchmetrics.classification import MulticlassJaccardIndex
 
 from affex.data.utils import BatchKeys
 from affex.utils.utils import ResultDict, to_device
@@ -54,10 +55,11 @@ def get_substrate_fn(substrate, kernel_size=3, sigma=1.0):
         return lambda x: torch.zeros_like(x)
     else:
         raise ValueError(f"Unknown substrate type: {substrate}")
-
+    
+    
 class FSSCausalMetric(Metric):
 
-    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero", percentage=1.0, confidence_loss=False):
+    def __init__(self, model, mode, step=None, threshold_step=None, n_steps=None, substrate_fn="zero", percentage=1.0, loss=False, measure="logits", skip_empty=False):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -65,6 +67,12 @@ class FSSCausalMetric(Metric):
             mode (str): 'del' or 'ins'.
             step (int): number of pixels modified per one iteration.
             substrate_fn (func): a mapping from old pixels to new pixels.
+            meausure (str): 'logits' or 'miou'. If 'logits', the metric will compute xAUC based on logits. If 'miou', it will compute mean IoU.
+            threshold_step (float): percentage of pixels modified per one iteration, in (0, 1).
+            n_steps (int): number of steps to take.
+            percentage (float): percentage of pixels to modify, in (0, 1).
+            loss (bool): if True, the metric will compute confidence/miou loss instead of xAUC.
+            skip_empty (bool): if True, the metric will skip empty step at the beginning.
         """
         super().__init__()
         assert mode in ['del', 'ins']
@@ -74,12 +82,15 @@ class FSSCausalMetric(Metric):
         assert step or threshold_step or n_steps, "At least one of step, threshold_step or n_steps must be provided."
         # Only one of them should be provided
         assert not (step and threshold_step and n_steps), "Only one of step, threshold_step or n_steps should be provided."
+        assert measure in ['logits', 'miou'], "measure must be either 'logits' or 'miou'."
         
         self.step = step
         self.threshold_step = threshold_step
         self.n_steps = n_steps
         self.percentage = percentage
-        self.confidence_loss = confidence_loss
+        self.loss = loss
+        self.measure = measure
+        self.skip_empty = skip_empty
         
         if self.percentage is not None:
             assert 0 < self.percentage < 1.0, "percentage must be in (0, 1)"
@@ -166,18 +177,18 @@ class FSSCausalMetric(Metric):
         start[BatchKeys.PROMPT_MASKS] = start_masks
         return start
     
-    def evaluate(self, input_dict, explanation, explanation_mask):
+    def evaluate(self, input_dict, explanation, explanation_mask, gt=None):
         r"""Non-interactive evaluation: returns final xAUC and all scores."""
-        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False):
+        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False, gt=gt):
             pass
         return {"auc": self.xauc, "scores": self.scores}
 
 
-    def evaluate_interactive(self, input_dict, explanation, explanation_mask):
+    def evaluate_interactive(self, input_dict, explanation, explanation_mask, gt=None):
         r"""Interactive evaluation: yields intermediate states."""
-        yield from self._evaluate_core(input_dict, explanation, explanation_mask, interactive=True)
+        yield from self._evaluate_core(input_dict, explanation, explanation_mask, interactive=True, gt=gt)
 
-    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=False):
+    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=False, gt=None):
         r"""Efficiently evaluate big batch of images.
 
         Args:
@@ -196,6 +207,11 @@ class FSSCausalMetric(Metric):
         device = images.device
         self.mid_statuses = []
         
+        if self.measure == 'miou':
+            if gt is None:
+                raise ValueError("Ground truth labels (gt) must be provided for miou computation.")
+            miou = MulticlassJaccardIndex(num_classes=C, ignore_index=-100, average=None).to(device)
+
         with torch.no_grad():
             result = self.model(to_device(input_dict, device), postprocess=False)
             preds = F.softmax(result[ResultDict.LOGITS], dim=1)
@@ -214,16 +230,20 @@ class FSSCausalMetric(Metric):
 
         # While not all pixels are changed
         for i in tqdm(range(self.computed_n_steps + 1), desc=caption + 'pixels', disable=not verbose):
-            # clear_output()
-            # display(unnormalize(start[BatchKeys.IMAGES][0, 1:]).rgb)
-            # display(unnormalize(finish[BatchKeys.IMAGES][0, 1:]).rgb)
-            # Compute new scores
-            with torch.no_grad():
-                result = self.model(to_device(start, device), postprocess=False)
-                preds = F.softmax(result[ResultDict.LOGITS], dim=1)
-            reduced_preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
-            top_preds = reduced_preds[:, top] # Take the top classes for each batch
-            scores[i] = top_preds
+
+            if not (i == 0 and self.skip_empty):
+                # Compute new scores
+                with torch.no_grad():
+                    result = self.model(to_device(start, device), postprocess=False)
+                    preds = F.softmax(result[ResultDict.LOGITS], dim=1)
+                reduced_preds = self.reduce(preds[:, :, explanation_mask]) # Reduce over the selected pixels -> [B, C, S] (S number of selected pixels) -> [B, C]
+                if self.measure == 'miou':
+                    seg = preds.argmax(dim=1)  # Get the predicted segmentation
+                    top_preds = repeat(miou(seg, gt)[1:].mean(dim=0, keepdim=True), "c -> b c", b=B)
+                    miou.reset()
+                else:
+                    top_preds = reduced_preds[:, top] # Take the top classes for each batch
+                scores[i] = top_preds
             
             if i == self.computed_n_steps: # If we are at the last step, we don't need to change anything
                 break
@@ -237,13 +257,20 @@ class FSSCausalMetric(Metric):
                 )
             if interactive:
                 yield start, i, scores[:i+1]
+                
+        if self.skip_empty:
+            # If we skip the first empty step, we need to remove it from scores
+            scores = scores[1:]
         
-        if self.confidence_loss:
+        if self.loss:
             # If confidence loss is used, the last step is the final state
             full_confidence = scores[-1].clone()
             reduced_scores = scores[:-1]  # Remove the last step from scores
             # Compute the final score as the mean of all scores
-            self.xauc = torch.abs(full_confidence - auc(reduced_scores.mean(1)))
+            if reduced_scores.shape[1] == 1: # If there is only one batch element, xAUC it's just a value
+                self.xauc = full_confidence - reduced_scores
+            else:
+                self.xauc = torch.abs(full_confidence - auc(reduced_scores.mean(1)))
         else:
             self.xauc = auc(scores.mean(1))
             
@@ -255,8 +282,8 @@ class FSSCausalMetric(Metric):
             assert self.n_steps > 0, "n_steps must be a positive integer"
             self.computed_n_steps = self.n_steps
             if self.percentage is not None and self.percentage < 1.0:
-                MHW = int(MHW * self.percentage)
-            self.step_intervals = [MHW * i // self.n_steps for i in range(self.n_steps + 1)]
+                reduced_MHW = int(MHW * self.percentage)
+            self.step_intervals = [reduced_MHW * i // self.n_steps for i in range(self.n_steps + 1)]
         elif self.step is not None:
             self.computed_n_steps = MHW // self.step + 1
             self.step_intervals = [self.step * i for i in range(self.computed_n_steps)] + [MHW]
@@ -282,12 +309,12 @@ class FSSCausalMetric(Metric):
             # Find indices of the edges in the ordered saliency map and flip them
             self.step_intervals = num_elems - torch.searchsorted(ordered_saliency, edges).flip(dims=[1])[0]
             
-        if self.confidence_loss and self.step_intervals[-1] != MHW:
+        if self.loss and self.step_intervals[-1] != MHW:
             # If confidence loss is used, we need to add the last step
             self.step_intervals.append(MHW)
             self.computed_n_steps += 1
         
-    def update(self, input_dict, explanation, explanation_mask):
+    def update(self, input_dict, explanation, explanation_mask, gt):
         r"""Update metric with new batch of images.
 
         Args:
@@ -295,7 +322,7 @@ class FSSCausalMetric(Metric):
             exp_batch (np.ndarray): saliency map over the support iamges
             explanation_mask (torch.tensor): mask over the query image
         """
-        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False):
+        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False, gt=gt):
             pass
         self.results.append((self.xauc, self.scores))
         

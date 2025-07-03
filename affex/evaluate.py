@@ -165,7 +165,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             substitutor.reset(batch=batch)
             input_dict, gt = next(substitutor)
             input_dict = to_device(input_dict, device)
-            
+            gt = to_device(gt, device)
             
             bar.set_description(f"Calculating prediction")
             with torch.no_grad():
@@ -192,6 +192,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
                 input_dict=input_dict,
                 explanation=explanation,
                 explanation_mask=metric_mask,
+                gt=gt,
             )
             scores = metrics.compute()
             if len(metrics.keys()) == 1:
