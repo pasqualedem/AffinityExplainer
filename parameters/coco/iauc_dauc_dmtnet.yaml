@@ -1,19 +1,16 @@
-grid: CUTIAUC
+grid: IAUCDAUC
 
 parameters:
-  model: [dcama, dmtnet]
+  model: [dmtnet]
   explainer:
     name: [affinity, saliency, random, integrated_gradients]
 
   explanation_masking: [logits]
-  # metric_masking: [all]
   log_frequency: [50]
-  disable_dauc: [True]
-  
+
   metric:
-    n_steps: [5]
+    n_steps: [75]
     substrate_fn: [zero]
-    percentage: [0.01]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
@@ -37,3 +34,4 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
+    num_processes: [2]

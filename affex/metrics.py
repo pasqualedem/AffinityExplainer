@@ -68,7 +68,7 @@ class FSSCausalMetric(Metric):
         threshold_step=None,
         n_steps=None,
         substrate_fn="zero",
-        percentage=1.0,
+        percentage=None,
         loss=False,
         measure="logits",
         skip_empty=False,
@@ -361,6 +361,8 @@ class FSSCausalMetric(Metric):
             self.computed_n_steps = self.n_steps
             if self.percentage is not None and self.percentage < 1.0:
                 reduced_MHW = int(MHW * self.percentage)
+            else:
+                reduced_MHW = MHW
             self.step_intervals = [
                 reduced_MHW * i // self.n_steps for i in range(self.n_steps + 1)
             ]
