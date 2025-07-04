@@ -1,164 +1,128 @@
-r""" ISIC few-shot semantic segmentation dataset """
+r""" Chest X-ray few-shot semantic segmentation dataset """
 import os
 import glob
-import random
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import torch
 import PIL.Image as Image
 import numpy as np
 
-from affex.data.utils import BatchKeys
-from torch.nn.functional import one_hot
+from ..data.utils import BatchKeys
 
-from affex.utils.utils import hierarchical_uniform_sampling
+# test: 704
+class DatasetLung(Dataset):
+    def __init__(self, datapath, preprocess, split, n_shots, val_num_samples=600, **kwargs):
+        self.split = split
+        self.nclass = 1
+        self.benchmark = 'lung'
+        self.shot = n_shots
+        self.num = val_num_samples
+        self.maintain_gt_shape = False
 
-
-def get_dataframe(path):
-    
-    def get_id(path):
-        path, name = os.path.split(path)
-        subfolder = os.path.split(os.path.split(path)[0])[-1]
-        name = name.split(".")[0]
-        return subfolder + "." + name
-        
-    subfolders = [
-        os.path.join(path, f)
-        for f in os.listdir(path)
-    ]
-    files = [
-        os.path.join(subfolder, "images", f)
-        for subfolder in subfolders
-        for f in os.listdir(os.path.join(subfolder, "images"))
-    ]
-    df = pd.DataFrame(files, columns=["img_path"])
-    df['id'] = df["img_path"].apply(get_id)
-    df['mask_path'] = df["img_path"].apply(lambda x: x.replace("images", "masks").replace(".jpg", ".png").replace(".JPG", ".png"))
-    df.set_index("id", inplace=True)
-    df['id'] = df.index
-    df = df[["id", "img_path", "mask_path"]]
-    
-    return df
-
-
-class LungCancer(Dataset):
-    id2class = {0: "background", 1:'nodule'}
-    num_classes = len(id2class)
-    class_ids = range(0, 2)   
-    
-    def __init__(self, datapath, preprocess, prompt_images=None,**kwargs):
-        self.benchmark = 'isic'
-
-        self.base_path = os.path.join(datapath, 'lungcancer')
-        
+        self.base_path = os.path.join(datapath, 'LungSegmentation')
+        self.img_path = os.path.join(self.base_path, 'CXR_png')
+        self.ann_path = os.path.join(self.base_path, 'masks')
         self.transform = preprocess
-        self.prompt_images = prompt_images    
-        
-        self.train_metadata = pd.read_pickle(os.path.join(self.base_path, "lung_cancer_train.pkl"))
-        self.test_metadata = pd.read_pickle(os.path.join(self.base_path, "lung_cancer_test.pkl"))
-        
-        self.min = self.train_metadata["hu_array"].apply(lambda x: x.min()).min()
-        self.max = self.train_metadata["hu_array"].apply(lambda x: x.max()).max()
+
+        self.categories = {1:'1'}
+
+        self.class_ids = range(0, 1)
+        self.img_metadata_classwise = self.build_img_metadata_classwise()       
 
     def __len__(self):
-        return len(self.test_metadata)
-    
-    def __getitem__(self, index):
-        return self.get_sample(index, "test")
+        return self.num
 
-    def get_sample(self, index, split):
-        if split == "train":
-            metadata = self.train_metadata
-        elif split == "test":
-            metadata = self.test_metadata
+    def __getitem__(self, idx_batchmetadata):
+        idx, metadata = idx_batchmetadata
+        if BatchKeys.IMAGE_IDS in metadata:
+            query_name = metadata[BatchKeys.IMAGE_IDS][0]
+            support_names = metadata[BatchKeys.IMAGE_IDS][1:]
+            class_sample = metadata[BatchKeys.CLASSES][0][0]
         else:
-            raise NotImplementedError
-        
-        label1, mask, _, hu_array = metadata.iloc[index]
-        img = self.convert_image(hu_array)
-        mask = torch.tensor(mask)
+            query_name, support_names, class_sample = self.sample_episode(idx)
+        query_img, query_mask, support_imgs, support_masks = self.load_frame(query_name, support_names)
+        query_img = self.transform(query_img)
+        query_mask = F.interpolate(query_mask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
+        support_imgs = torch.stack([self.transform(support_img) for support_img in support_imgs])
+        support_masks_tmp = []
+        for smask in support_masks:
+            smask = F.interpolate(smask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
+            support_masks_tmp.append(smask)
+        support_masks = torch.stack(support_masks_tmp)
 
-        img = self.transform(img)
-        mask = F.interpolate(
-            mask.unsqueeze(0).unsqueeze(0).float(),
-            img.size()[-2:],
-            mode="nearest",
-        ).squeeze()
-        size = torch.tensor(img.shape[-2:])
-
-        return {
-            BatchKeys.IMAGES: img.unsqueeze(0),
-            BatchKeys.DIMS: size,
-            BatchKeys.IMAGE_IDS: [index],
-        }, mask
-        
-    def train_len(self):
-        return len(self.train_metadata)
-        
-    def convert_image(self, hu_array):
-        # normalize
-        hu_array = ((hu_array - self.min) / (self.max - self.min)) * 255
-        img = Image.fromarray(hu_array.astype(np.uint8))
-        img = img.convert("RGB")
-        return img
-        
-    def extract_prompts(self, prompt_images=None):
-        prompt_images = prompt_images or self.prompt_images
-        if isinstance(prompt_images, int):
-            # linspace over the train_len
-            prompt_images = hierarchical_uniform_sampling(self.train_len()-1, prompt_images)
-        
-        prompt_df = self.train_metadata.loc[prompt_images]
-        
-        images = [
-            self.convert_image(x.hu_array)
-            for x in prompt_df.itertuples()
-        ]
-        masks = [
-                x.mask
-            for x in prompt_df.itertuples()
-        ]
-        images = [self.transform(image) for image in images]
-        masks = [
-            F.interpolate(
-                torch.tensor(mask).unsqueeze(0).unsqueeze(0).float(),
-                images[0].size()[-2:],
-                mode="nearest",
-            ).squeeze()
-            for mask in masks
-        ]
-        image_ids = list(prompt_images)
-
-        sizes = torch.stack([torch.tensor(x.shape[1:]) for x in images])
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-        # Background flags are always 0
-        flag_masks = torch.stack(
-            [(masks == c).sum(dim=(1, 2)) > 0 for c in self.class_ids]
-        ).T
-
-        masks = one_hot(masks.long(), self.num_classes).permute(0, 3, 1, 2).float()
-        # Set background to 0
-        masks[:, 0] = 0
-
-        flag_examples = flag_masks.clone().bool()
-        # Set background to True
-        flag_examples[:, 0] = True
-        prompt_dict = {
+        images = torch.cat([query_img.unsqueeze(0), support_imgs], dim=0)
+        support_masks = torch.cat([query_mask.unsqueeze(0).unsqueeze(0), support_masks.unsqueeze(1)], dim=0)
+        support_masks = torch.concat([torch.zeros_like(support_masks), support_masks], dim=1)
+        flags_masks = torch.stack([torch.zeros(len(images), dtype=torch.uint8), torch.ones(len(images), dtype=torch.uint8)], dim=1)
+        flag_examples = torch.ones(len(images), 2, dtype=torch.uint8)
+        data_dict = {
             BatchKeys.IMAGES: images,
-            BatchKeys.PROMPT_MASKS: masks,
-            BatchKeys.FLAG_MASKS: flag_masks,
+            BatchKeys.PROMPT_MASKS: support_masks,
+            BatchKeys.FLAG_MASKS: flags_masks,
             BatchKeys.FLAG_EXAMPLES: flag_examples,
-            BatchKeys.IMAGE_IDS: image_ids,
-            BatchKeys.DIMS: sizes,
+            BatchKeys.DIMS: torch.tensor([img.shape[-2:] for img in images]),
+            BatchKeys.CLASSES: [[class_sample] for _ in range(len(images))],
+            BatchKeys.IMAGE_IDS: [*[query_name], *support_names],
+            BatchKeys.GROUND_TRUTHS: support_masks[:, 1],
         }
-        return prompt_dict
-    
-    def read_mask(self, mask_path):
-        mask = torch.tensor(np.array(Image.open(mask_path).convert('L')))
-        mask[mask > 0] = 1
+
+        return data_dict
+
+    def load_frame(self, query_name, support_names):
+        query_mask = self.read_mask(query_name)
+        support_masks = [self.read_mask(name) for name in support_names]
+        if query_name.find('MCUCXR')!=-1:
+            query_id = query_name
+        else:
+            query_id = query_name[:-9] + '.png'
+
+        query_img = Image.open(os.path.join(self.img_path, os.path.basename(query_id))).convert('RGB')
+        support_ids = []
+        for name in support_names:
+            if name.find('MCUCXR')!=-1:
+                support_ids.append(os.path.basename(name))
+            else:
+                support_ids.append(os.path.basename(name)[:-9] + '.png')
+
+        support_names = [os.path.join(self.img_path, sid) for sid in support_ids]
+        support_imgs = [Image.open(name).convert('RGB') for name in support_names]
+
+        return query_img, query_mask, support_imgs, support_masks
+
+    def read_mask(self, img_name):
+        mask = torch.tensor(np.array(Image.open(img_name).convert('L')))
+        mask[mask < 128] = 0
+        mask[mask >= 128] = 1
         return mask
 
+    def sample_episode(self, idx):
+        class_id = (idx % len(self.class_ids))+1
+        class_sample = self.categories[class_id]
+
+        query_name = np.random.choice(self.img_metadata_classwise[class_sample], 1, replace=False)[0]
+        support_names = []
+        while True:  # keep sampling support set if query == support
+            support_name = np.random.choice(self.img_metadata_classwise[class_sample], 1, replace=False)[0]
+            if query_name != support_name: support_names.append(support_name)
+            if len(support_names) == self.shot: break
+
+        return query_name, support_names, class_id
+
+    def build_img_metadata_classwise(self):
+        img_metadata_classwise = {}
+        for cat in self.categories.values():
+            img_metadata_classwise[cat] = []
+
+        if self.split == 'test':
+            build_path = self.ann_path
+        elif self.split == 'aux':
+            build_path = self.aux_path
+        
+        for cat in self.categories.values():
+            img_paths = sorted([path for path in glob.glob('%s/*' % build_path)])
+            for img_path in img_paths:
+                if os.path.basename(img_path).split('.')[1] == 'png':
+                    img_metadata_classwise[cat] += [img_path]
+        print('Total (%s) %s images are : %d' % (self.split, self.benchmark, self.__len__()))
+        return img_metadata_classwise

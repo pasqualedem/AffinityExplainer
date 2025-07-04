@@ -6,6 +6,9 @@ import itertools
 from typing import Any, Dict, List, Tuple
 from torch.utils.data import Dataset, BatchSampler
 
+from affex.data.deepglobe import DatasetDeepglobe
+from affex.data.isic import DatasetISIC
+from affex.data.lung import DatasetLung
 import affex.data.utils as utils
 from affex.data.coco import CocoLVISDataset
 from affex.data.coco20i import Coco20iDataset
@@ -26,6 +29,9 @@ datasets = {
     "pascal5i": Pascal5iDataset,
     "val_pascal5i": Pascal5iDataset,
     "val_lvis": CocoLVISDataset,
+    "val_deepglobe": DatasetDeepglobe,
+    "val_isic": DatasetISIC,
+    "val_lung": DatasetLung,
 }
 
 def collate_fn(

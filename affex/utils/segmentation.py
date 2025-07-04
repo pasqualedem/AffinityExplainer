@@ -56,7 +56,7 @@ def create_rgb_segmentation(segmentation, num_classes=None):
     if len(segmentation.shape) == 4:
         segmentation = segmentation.argmax(dim=1)
     if num_classes is None:
-        num_classes = segmentation.max().item() + 1
+        num_classes = int(segmentation.max().item() + 1)
     
     # Define a precise colormap for specific classes
     colormap = torch.tensor([

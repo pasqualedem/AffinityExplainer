@@ -10,7 +10,7 @@ from affex.data.industrial import DatasetIndustrial
 from affex.data.isic import DatasetISIC
 from affex.data.kvasir import KvasirTestDataset
 from affex.data.lab2wild import Lab2Wild
-from affex.data.lung import LungCancer
+from affex.data.lung import DatasetLung
 from affex.data.nucleus import Nucleus
 from affex.data.test_pascal import TestDatasetPASCAL
 from affex.data.pothole import Pothole
@@ -31,9 +31,7 @@ TEST_DATASETS = {
     "test_nucleus": Nucleus,
     "test_pothole": Pothole,
     "test_lab2wild": Lab2Wild,
-    "test_lungcancer": LungCancer,
-    # "test_dram": DramTestDataset,
-    # "test_brain": BrainTestDataset,
+    "test_lungcancer": DatasetLung,
     "test_kvasir": KvasirTestDataset,
     "test_pascal": TestDatasetPASCAL,
     "test_industrial": DatasetIndustrial,

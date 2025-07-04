@@ -2,171 +2,125 @@ r""" ISIC few-shot semantic segmentation dataset """
 import os
 import glob
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import torch
 import PIL.Image as Image
 import numpy as np
 
-from affex.data.utils import BatchKeys
-from torch.nn.functional import one_hot
-
-from affex.utils.utils import hierarchical_uniform_sampling
-
-
-def build_index(img_path, ann_path, gt_class_df):
-    gt_class_df["id"] = gt_class_df["image"].apply(lambda x: x.replace("_downsampled", "")).astype(str)
-    img_metadata = [
-            (
-                os.path.join(
-                    img_path, f.replace("_segmentation.png", ".jpg")
-                ),
-                os.path.join(ann_path, f),
-            )
-            for f in filter(lambda x: x.endswith(".png"), os.listdir(ann_path))
-        ]
-    img_metadata_df = pd.DataFrame(img_metadata, columns=["img_path", "seg_path"])
-    img_metadata_df["id"] = img_metadata_df["img_path"].apply(lambda x: os.path.split(x)[-1].split(".")[0]).astype(str)
-    merged_df = gt_class_df.join(img_metadata_df.set_index("id"), on="id", how="inner")
-    merged_df["label"] = merged_df[["NV","MEL","BKL","BCC","AK","DF","VASC","SCC","UNK"]].to_numpy().argmax(axis=1) + 1
-    merged_df = merged_df.drop(["NV","MEL","BKL","BCC","AK","DF","VASC","SCC","UNK"], axis=1)
-    merged_df = merged_df.set_index("id")
-    return merged_df
+from ..data.utils import BatchKeys
 
 # 1:1867 2:519 3:208
 class DatasetISIC(Dataset):
-    id2class = {0: "background", 1:'nevus', 2:'melanoma', 3:'seborrheic_keratosis'}
-    num_classes = len(id2class)
-    
-    def __init__(self, datapath, preprocess, num=600, prompt_images=None,**kwargs):
+    def __init__(self, datapath, preprocess, split, n_shots, val_num_samples=600, **kwargs):
+        self.split = split
         self.benchmark = 'isic'
-        self.num = num
+        self.shot = n_shots
+        self.num = val_num_samples
+        self.categories = {1:'1', 2:'2', 3:'3'}
 
         self.base_path = os.path.join(datapath, 'ISIC')
-        gt_class_df_path = os.path.join(self.base_path, "ISIC_2019_Training_GroundTruth.csv")
-        gt_class_df = pd.read_csv(gt_class_df_path)
-        
-        train_img_path = os.path.join(self.base_path, 'ISIC2018_Task1-2_Training_Input')
-        train_ann_path = os.path.join(self.base_path, 'ISIC2018_Task1_Training_GroundTruth')
-        
-        test_csv = pd.read_csv(os.path.join(self.base_path, "test.csv"))
-        
+        self.img_path = os.path.join(self.base_path, 'ISIC2018_Task1-2_Training_Input')
+        self.ann_path = os.path.join(self.base_path, 'ISIC2018_Task1_Training_GroundTruth')
         self.transform = preprocess
+        self.maintain_gt_shape = False
 
-        self.class_ids = range(0, 4)           
-        
-        self.train_img_metadata = build_index(train_img_path, train_ann_path, gt_class_df)
-        self.test_img_metadata = self.train_img_metadata.loc[test_csv['id']]
-        self.train_img_metadata = self.train_img_metadata.drop(test_csv["id"])
-        
-        self.prompt_images = prompt_images
-        
+        self.class_ids = range(0, 3)
+        self.img_metadata_classwise = self.build_img_metadata_classwise()       
 
     def __len__(self):
-        return len(self.test_img_metadata)
-    
-    def __getitem__(self, index):
-        return self.get_sample(index, "test")
+        return self.num
 
-    def get_sample(self, index, split):
-        if split == "train":
-            metadata = self.train_img_metadata
-        elif split == "test":
-            metadata = self.test_img_metadata
+    def __getitem__(self, idx_batchmetadata):
+        idx, metadata = idx_batchmetadata
+        if BatchKeys.IMAGE_IDS in metadata:
+            query_name = metadata[BatchKeys.IMAGE_IDS][0]
+            support_names = metadata[BatchKeys.IMAGE_IDS][1:]
+            class_sample = metadata[BatchKeys.CLASSES][0][0]
         else:
-            raise NotImplementedError
-        
-        img_id, img, mask, label = metadata.iloc[index]
-        img = Image.open(img).convert("RGB")
-        mask = self.read_mask(mask, label)
+            query_name, support_names, class_sample = self.sample_episode(idx)
 
-        img = self.transform(img)
-        mask = F.interpolate(
-            mask.unsqueeze(0).unsqueeze(0).float(),
-            img.size()[-2:],
-            mode="nearest",
-        ).squeeze()
-        size = torch.tensor(img.shape[-2:])
+        query_img, query_mask, support_imgs, support_masks = self.load_frame(query_name, support_names)
+        query_img = self.transform(query_img)
+        query_mask = F.interpolate(query_mask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
+        support_imgs = torch.stack([self.transform(support_img) for support_img in support_imgs])
+        support_masks_tmp = []
+        for smask in support_masks:
+            smask = F.interpolate(smask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
+            support_masks_tmp.append(smask)
+        support_masks = torch.stack(support_masks_tmp)
 
-        return {
-            BatchKeys.IMAGES: img.unsqueeze(0),
-            BatchKeys.DIMS: size,
-            BatchKeys.IMAGE_IDS: [img_id],
-        }, mask
-        
-    def train_len(self):
-        return len(self.train_img_metadata)
-        
-    def extract_prompts(self, prompt_images=None):
-        prompt_images = prompt_images or self.prompt_images
-        
-        if isinstance(prompt_images, int):
-            num_samples_per_class = prompt_images // self.num_classes
-            selected_samples = self.train_img_metadata.groupby("label", group_keys=False).apply(
-                lambda x: x.iloc[hierarchical_uniform_sampling(len(x)-1, num_samples_per_class)
-                ]
-            )
-            prompt_images = selected_samples.index
-        
-        prompt_df = self.train_img_metadata.loc[prompt_images]
-        
-        images = [
-            Image.open(x.img_path).convert("RGB")
-            for x in prompt_df.itertuples()
-        ]
-        masks = [
-            self.read_mask(
-                x.seg_path,
-                x.label
-            )
-            for x in prompt_df.itertuples()
-        ]
-        images = [self.transform(image) for image in images]
-        masks = [
-            F.interpolate(
-                mask.unsqueeze(0).unsqueeze(0).float(),
-                images[0].size()[-2:],
-                mode="nearest",
-            ).squeeze()
-            for mask in masks
-        ]
-        image_ids = list(prompt_images)
+        # batch = {'query_img': query_img,
+        #          'query_mask': query_mask,
+        #          'query_name': query_name,
 
-        sizes = torch.stack([torch.tensor(x.shape[1:]) for x in images])
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-        # Background flags are always 0
-        flag_masks = torch.stack(
-            [(masks == c).sum(dim=(1, 2)) > 0 for c in self.class_ids]
-        ).T
+        #          'support_imgs': support_imgs,
+        #          'support_masks': support_masks,
+        #          'support_names': support_names,
 
-        masks = one_hot(masks.long(), self.num_classes).permute(0, 3, 1, 2).float()
-        # Set background to 0
-        masks[:, 0] = 0
-
-        flag_examples = flag_masks.clone().bool()
-        # Set background to True
-        flag_examples[:, 0] = True
-        prompt_dict = {
+        #          'class_id': torch.tensor(class_sample)}
+        images = torch.cat([query_img.unsqueeze(0), support_imgs], dim=0)
+        support_masks = torch.cat([query_mask.unsqueeze(0).unsqueeze(0), support_masks.unsqueeze(1)], dim=0)
+        support_masks = torch.concat([torch.zeros_like(support_masks), support_masks], dim=1)
+        flags_masks = torch.stack([torch.zeros(len(images), dtype=torch.uint8), torch.ones(len(images), dtype=torch.uint8)], dim=1)
+        flag_examples = torch.ones(len(images), 2, dtype=torch.uint8)
+        data_dict = {
             BatchKeys.IMAGES: images,
-            BatchKeys.PROMPT_MASKS: masks,
-            BatchKeys.FLAG_MASKS: flag_masks,
+            BatchKeys.PROMPT_MASKS: support_masks,
+            BatchKeys.FLAG_MASKS: flags_masks,
             BatchKeys.FLAG_EXAMPLES: flag_examples,
-            BatchKeys.IMAGE_IDS: image_ids,
-            BatchKeys.DIMS: sizes,
+            BatchKeys.DIMS: torch.tensor([img.shape[-2:] for img in images]),
+            BatchKeys.CLASSES: [[class_sample] for _ in range(len(images))],
+            BatchKeys.IMAGE_IDS: [*[query_name], *support_names],
+            BatchKeys.GROUND_TRUTHS: support_masks[:, 1],
         }
-        return prompt_dict
 
-    def read_binary_mask(self, img_name):
+        return data_dict
+
+    def load_frame(self, query_name, support_names):
+        query_img = Image.open(query_name).convert('RGB')
+        support_imgs = [Image.open(name).convert('RGB') for name in support_names]
+
+        query_id = query_name.split('/')[-1].split('.')[0]
+        query_name = os.path.join(self.ann_path, query_id) + '_segmentation.png'
+        support_ids = [name.split('/')[-1].split('.')[0] for name in support_names]
+        support_names = [os.path.join(self.ann_path, sid) + '_segmentation.png' for name, sid in zip(support_names, support_ids)]
+
+        query_mask = self.read_mask(query_name)
+        support_masks = [self.read_mask(name) for name in support_names]
+
+        return query_img, query_mask, support_imgs, support_masks
+
+    def read_mask(self, img_name):
         mask = torch.tensor(np.array(Image.open(img_name).convert('L')))
         mask[mask < 128] = 0
         mask[mask >= 128] = 1
         return mask
-    
-    def read_mask(self, img_name, label):
-        mask = self.read_binary_mask(img_name)
-        mask[mask == 1] = label
-        return mask
 
+    def sample_episode(self, idx):
+        class_id = (idx % len(self.class_ids))+1
+        class_sample = self.categories[class_id]
+
+        query_name = np.random.choice(self.img_metadata_classwise[class_sample], 1, replace=False)[0]
+        support_names = []
+        while True:  # keep sampling support set if query == support
+            support_name = np.random.choice(self.img_metadata_classwise[class_sample], 1, replace=False)[0]
+            if query_name != support_name: support_names.append(support_name)
+            if len(support_names) == self.shot: break
+
+        return query_name, support_names, class_id
+
+    def build_img_metadata_classwise(self):
+        img_metadata_classwise = {}
+        for cat in self.categories.values():
+            img_metadata_classwise[cat] = []
+
+        build_path = self.img_path
+
+        for cat in self.categories.values():
+            img_paths = sorted([path for path in glob.glob('%s/*' % os.path.join(build_path, cat))])
+            for img_path in img_paths:
+                if os.path.basename(img_path).split('.')[1] == 'jpg':
+                    img_metadata_classwise[cat] += [img_path]
+        print('Total (%s) %s images are : %d' % (self.split, self.benchmark, self.__len__()))
+        return img_metadata_classwise
