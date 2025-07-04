@@ -54,6 +54,7 @@ class CocoLVISDataset(Dataset):
         sample_function: str = "power_law",
         custom_preprocess: bool = True,
         is_pyramids: bool = False,
+        maintain_gt_shape: bool = True,
     ):
         """Initialize the dataset.
 
@@ -112,6 +113,7 @@ class CocoLVISDataset(Dataset):
         self.all_example_categories = all_example_categories
         self.sample_function = sample_function
         self.is_pyramids = is_pyramids
+        self.maintain_gt_shape = maintain_gt_shape
 
         # load instances
         instances = utils.load_instances(self.instances_path)

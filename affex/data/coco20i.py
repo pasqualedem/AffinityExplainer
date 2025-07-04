@@ -28,6 +28,7 @@ class Coco20iDataset(CocoLVISDataset):
         n_folds: int,
         n_shots: int = None,
         val_num_samples: int = 1000,
+        mask_size: int | None = None,
         *args,
         **kwargs
     ):
@@ -42,7 +43,9 @@ class Coco20iDataset(CocoLVISDataset):
         super().__init__(*args, **kwargs)
 
         assert split in [Coco20iSplit.TRAIN, Coco20iSplit.VAL]
-        assert val_fold_idx < n_folds
+        assert val_fold_idx is None or val_fold_idx < n_folds, (
+            "val_fold_idx should be less than n_folds or None"
+        )
         assert split == Coco20iSplit.TRAIN or n_shots is not None
         # If n_shots is min, n_ways should be max
         assert (
@@ -57,6 +60,7 @@ class Coco20iDataset(CocoLVISDataset):
         self.n_folds = n_folds
         self.n_shots = n_shots
         self.val_num_samples = val_num_samples
+        self.mask_size = mask_size
         self._prepare_benchmark()
 
     def _prepare_benchmark(self):
@@ -64,11 +68,15 @@ class Coco20iDataset(CocoLVISDataset):
         updating the annotation dicts.
         """
         n_categories = len(self.categories)
-        idxs_val = [
-            self.val_fold_idx + i * self.n_folds
-            for i in range(n_categories // self.n_folds)
-        ]
-        idxs_train = [i for i in range(n_categories) if i not in idxs_val]
+        if self.val_fold_idx is None:
+            idxs_val = [i for i in range(n_categories)]
+            idxs_train = []
+        else:
+            idxs_val = [
+                self.val_fold_idx + i * self.n_folds
+                for i in range(n_categories // self.n_folds)
+            ]
+            idxs_train = [i for i in range(n_categories) if i not in idxs_val]
 
         # keep categories corresponding to the selected indices
         # self.categories is a dict
@@ -115,40 +123,47 @@ class Coco20iDataset(CocoLVISDataset):
             return super().__getitem__(idx_batchmetadata)
         elif self.split == Coco20iSplit.VAL:
             idx, metadata = idx_batchmetadata
-            intended_classes = [[] for _ in range(self.n_ways * self.n_shots + 1)]
-            if self.n_ways == 1:
-                # sample a random category
-                cat_ids = [-1, random.choice(list(self.categories.keys()))]
-                # sample random img ids
-                image_ids = random.sample(
-                    list(self.cat2img[cat_ids[1]]), self.n_shots + 1
-                )
-                intended_classes[0].append(cat_ids[1])
-                for i in range(1, self.n_shots + 1):
-                    intended_classes[i].append(cat_ids[1])
+            if BatchKeys.IMAGE_IDS in metadata:
+                cat_ids = metadata[BatchKeys.CLASSES]
+                cat_ids = [-1] + sorted(set().union(*cat_ids))
+                image_ids = metadata[BatchKeys.IMAGE_IDS]
+                intended_classes = None
             else:
-                # sample n_ways categories
-                cat_ids = random.sample(list(self.categories.keys()), self.n_ways)
-                # Choose a random image from the first category
-                query_image_id = random.choice(list(self.cat2img[cat_ids[0]]))
-                intended_classes[0].append(cat_ids[0])
+                idx, metadata = idx_batchmetadata
+                intended_classes = [[] for _ in range(self.n_ways * self.n_shots + 1)]
+                if self.n_ways == 1:
+                    # sample a random category
+                    cat_ids = [-1, random.choice(list(self.categories.keys()))]
+                    # sample random img ids
+                    image_ids = random.sample(
+                        list(self.cat2img[cat_ids[1]]), self.n_shots + 1
+                    )
+                    intended_classes[0].append(cat_ids[1])
+                    for i in range(1, self.n_shots + 1):
+                        intended_classes[i].append(cat_ids[1])
+                else:
+                    # sample n_ways categories
+                    cat_ids = random.sample(list(self.categories.keys()), self.n_ways)
+                    # Choose a random image from the first category
+                    query_image_id = random.choice(list(self.cat2img[cat_ids[0]]))
+                    intended_classes[0].append(cat_ids[0])
 
-                # sample n_shots images from each category
-                image_ids = [query_image_id]
-                for cat_id in cat_ids:
-                    cat_image_ids = list(self.cat2img[cat_id])
-                    cat_image_ids = random.sample(cat_image_ids, self.n_shots)
-                    for i in (range(len(image_ids), len(image_ids) + self.n_shots)):
-                        intended_classes[i].append(cat_id)
-                    image_ids += cat_image_ids
-                cat_ids = [-1] + sorted(cat_ids)
+                    # sample n_shots images from each category
+                    image_ids = [query_image_id]
+                    for cat_id in cat_ids:
+                        cat_image_ids = list(self.cat2img[cat_id])
+                        cat_image_ids = random.sample(cat_image_ids, self.n_shots)
+                        for i in (range(len(image_ids), len(image_ids) + self.n_shots)):
+                            intended_classes[i].append(cat_id)
+                        image_ids += cat_image_ids
+                    cat_ids = [-1] + sorted(cat_ids)
 
             # load, stack and preprocess the images
             images, image_key, ground_truths = self._get_images_or_embeddings(image_ids)
 
             # create the prompt dicts
             bboxes, masks, points, classes, img_sizes = self._get_prompts(
-                image_ids, cat_ids, metadata[BatchMetadataKeys.PROMPT_TYPES]
+                image_ids, cat_ids, metadata.get(BatchMetadataKeys.PROMPT_TYPES, [PromptType.MASK])
             )
 
             # obtain padded tensors
@@ -156,7 +171,7 @@ class Coco20iDataset(CocoLVISDataset):
                 self.prompts_processor, bboxes, img_sizes, PromptType.BBOX
             )
             masks, flag_masks = annotations_to_tensor(
-                self.prompts_processor, masks, img_sizes, PromptType.MASK
+                self.prompts_processor, masks, img_sizes, PromptType.MASK, mask_size=self.mask_size or self.image_size
             )
             points, flag_points = annotations_to_tensor(
                 self.prompts_processor, points, img_sizes, PromptType.POINT
@@ -169,9 +184,17 @@ class Coco20iDataset(CocoLVISDataset):
             # stack ground truths
             dims = torch.tensor(img_sizes)
             max_dims = torch.max(dims, 0).values.tolist()
-            ground_truths = torch.stack(
-                [utils.collate_gts(x, max_dims) for x in ground_truths]
-            )
+            if self.maintain_gt_shape:
+                ground_truths = [utils.collate_gts(x, max_dims) for x in ground_truths]
+            else:
+                image_size = images.shape[-2:]
+                ground_truths = [
+                    torch.nn.functional.interpolate(
+                        gt.unsqueeze(0).unsqueeze(0).float(), size=image_size, mode="nearest"
+                    ).squeeze(0).squeeze(0).long()
+                    for gt in ground_truths
+                ]
+            ground_truths = torch.stack(ground_truths)
 
             flag_examples = flags_merge(flag_masks, flag_points, flag_bboxes)
 
