@@ -1,0 +1,37 @@
+grid: FeatureAblation
+
+parameters:
+  model: [dcama]
+  explainer:
+    name: [affinity]
+    aggregation_method: [mean]
+
+  explanation_masking: [logits]
+  log_frequency: [50]
+
+  metric:
+    n_steps: [75]
+    substrate_fn: [zero]
+
+  dataset: # parameters depending on the class you defined for the dataset
+    datasets:
+      val_pascal5i_N1K5:
+        name: [pascal]
+        data_dir: &instance_dir [data/pascal]
+        split: ["val"]
+        val_fold_idx: [null]
+        n_folds: [4]
+        n_shots: [5]
+        n_ways: [1]
+        do_subsample: [False]
+        val_num_samples: [1000]
+        maintain_gt_shape: [False]
+    common:
+      remove_small_annotations: [True]
+      ignore_borders: [True]
+      custom_preprocess: [False]
+  dataloader:
+    num_workers: [16]
+    batch_size: [1]
+    csv_folder: [data_csv]
+    # num_processes: [4]

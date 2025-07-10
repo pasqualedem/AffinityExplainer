@@ -180,8 +180,9 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model):
+    def __init__(self, model, aggregation_method="feature_ablation"):
         self.model = model
+        self.aggregation_method = aggregation_method
         if not any(isinstance(model, cls) for cls in MODEL_EXPLAINER_REGISTRY.keys()):
             raise ValueError(f"Model {model.__class__.__name__} is not supported for explanations. Supported models: {list(EXPLAINER_REGISTRY.keys())}")
         assert hasattr(model, "feature_ablation"), f"Model {model.__class__.__name__} does not have a feature_ablation method for explanations."
@@ -257,16 +258,19 @@ class AffinityExplainer:
                 # level_predictions.append(level_prediction)
 
             contrib_seq = torch.stack(level_contributions, dim=1)  # B C N H W
-            mean_contrib = contrib_seq.mean(dim=0)
 
-            cmask_contrib = self.model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, explanation_size=explanation_size)
-            if cmask_contrib is None:
-                cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
-
-            mean_contrib = min_max_scale(mean_contrib)
-
-            cmask_contrib = rearrange(cmask_contrib, "c -> 1 c 1 1 1") # B C N H W
-            weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=1))
+            if self.aggregation_method == "feature_ablation":
+                cmask_contrib = self.model.feature_ablation(result, chosen_class, explanation_mask, n_shots=class_shots, explanation_size=explanation_size)
+                if cmask_contrib is None:
+                    cmask_contrib = torch.full((contrib_seq.shape[0],), 1 / contrib_seq.shape[0])
+                cmask_contrib = rearrange(cmask_contrib, "c -> 1 c 1 1 1") # B C N H W
+                weighted_contrib = min_max_scale((contrib_seq * cmask_contrib).sum(dim=1))
+            elif self.aggregation_method == "mean":
+                mean_contrib = contrib_seq.mean(dim=1)
+                mean_contrib = min_max_scale(mean_contrib)
+                weighted_contrib = mean_contrib
+            else:
+                raise ValueError(f"Aggregation method {self.aggregation_method} is not supported. Supported methods: ['feature_ablation', 'mean']")
 
             # explanations.append((mean_contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots))
             explanations.append(weighted_contrib)
