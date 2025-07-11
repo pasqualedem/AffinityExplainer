@@ -180,9 +180,10 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation"):
+    def __init__(self, model, aggregation_method="feature_ablation", use_softmax=True):
         self.model = model
         self.aggregation_method = aggregation_method
+        self.use_softmax = use_softmax
         if not any(isinstance(model, cls) for cls in MODEL_EXPLAINER_REGISTRY.keys()):
             raise ValueError(f"Model {model.__class__.__name__} is not supported for explanations. Supported models: {list(EXPLAINER_REGISTRY.keys())}")
         assert hasattr(model, "feature_ablation"), f"Model {model.__class__.__name__} does not have a feature_ablation method for explanations."
@@ -231,7 +232,8 @@ class AffinityExplainer:
                 h = w = int(hw ** 0.5)
                 
                 # Get the attention map for the chosen class 
-                level_contribution = F.softmax(level_contribution, dim=-1)
+                if self.use_softmax:
+                    level_contribution = F.softmax(level_contribution, dim=-1)
                 # mask_level = rearrange(resize(mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST), "n h w -> h (n w)")
                 
                 # Transpose and resize the attention map
