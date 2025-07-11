@@ -1,0 +1,22 @@
+
+output_dir: data_csv
+dataset: # parameters depending on the class you defined for the dataset
+  datasets:
+    val_pascal5i_N1K1:
+      name: pascal
+      data_dir: &instance_dir data/pascal
+      split: "val"
+      val_fold_idx: null
+      n_folds: 4
+      n_shots: 1
+      n_ways: 1
+      do_subsample: false
+      val_num_samples: 1000
+      maintain_gt_shape: false
+  common:
+    remove_small_annotations: true
+    ignore_borders: true
+    custom_preprocess: false
+dataloader:
+  num_workers: 16
+  batch_size: 1
