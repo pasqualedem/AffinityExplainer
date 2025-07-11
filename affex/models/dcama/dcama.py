@@ -263,13 +263,8 @@ class DCAMA(AbstractDCAMA):
         self.raw_loss = nn.BCELoss()
 
     def forward_1shot(self, query_img, support_img, support_mask):
-        if self.train_backbone:
-            query_feats = self.extract_feats(query_img)
-            support_feats = self.extract_feats(support_img)
-        else:
-            with torch.no_grad():
-                query_feats = self.extract_feats(query_img)
-                support_feats = self.extract_feats(support_img)
+        query_feats = self.extract_feats(query_img)
+        support_feats = self.extract_feats(support_img)
 
         return self.model(query_feats, support_feats, support_mask.clone())
 
