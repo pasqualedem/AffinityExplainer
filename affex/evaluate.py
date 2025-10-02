@@ -102,7 +102,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     logger.info("parameters:")
     logger.info(parameters)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = parameters.get("device", "cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Running on {device}")
 
     model, image_size = build_model_preconfigured(model_name=parameters["model"])
