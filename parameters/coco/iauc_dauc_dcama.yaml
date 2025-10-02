@@ -3,7 +3,8 @@ grid: IAUCDAUC
 parameters:
   model: [dcama]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients]
+    # name: [affinity, saliency, random, integrated_gradients]
+    name: [deep_lift]
 
   explanation_masking: [logits]
   log_frequency: [50]

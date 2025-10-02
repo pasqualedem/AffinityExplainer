@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.transforms import functional as TvT
 from torchvision.transforms.functional import resize
-from captum.attr import IntegratedGradients, Saliency, LayerGradCam
+from captum.attr import IntegratedGradients, Saliency, LayerGradCam, GradientShap, DeepLift
 
 
 from affex.data.utils import BatchKeys, min_max_scale
@@ -42,6 +42,8 @@ class TraditionalExplainer(nn.Module):
         "integrated_gradients": (IntegratedGradients, {}, {"n_steps": 25, "internal_batch_size": 1}),
         "saliency": (Saliency, {}, {}),
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
+        "gradient_shap": (GradientShap, {}, {}),
+        "deep_lift": (DeepLift, {}, {}),
     }
     def __init__(self, model: nn.Module, method: str = "integrated gradients", layer: str = None):
         super(TraditionalExplainer, self).__init__()
@@ -305,6 +307,8 @@ EXPLAINER_REGISTRY = {
     "integrated_gradients": TraditionalExplainer,
     "saliency": TraditionalExplainer,
     "gradcam": TraditionalExplainer,
+    "gradient_shap": TraditionalExplainer,
+    "deep_lift": TraditionalExplainer,
     "affinity": AffinityExplainer,
     "random": RandomExplainer,
 }
