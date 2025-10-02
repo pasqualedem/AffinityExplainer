@@ -51,18 +51,19 @@ class DMTNetMultiClass(DMTNetwork):
     def forward(self, x, postprocess=True):
 
         masks = self._preprocess_masks(x[BatchKeys.PROMPT_MASKS], x[BatchKeys.DIMS])
-        assert masks.shape[0] == 1, "Only tested with batch size = 1"
+        B = masks.size(0)
+        # assert B == 1, "Only tested with batch size = 1"
         voting_masks = []
         fg_logits_masks = []
         attentions = []
         # get logits for each class
         for c in range(masks.size(2)):
             class_examples = x[BatchKeys.FLAG_EXAMPLES][:, :, c + 1]
-            n_shots = class_examples.sum().item()
+            n_shots = class_examples.sum().item() // B
             class_input_dict = {
                 "query_img": x[BatchKeys.IMAGES][:, 0],
-                "support_imgs": x[BatchKeys.IMAGES][:, 1:][class_examples].unsqueeze(0),
-                "support_masks": masks[:, :, c, ::][class_examples].unsqueeze(0),
+                "support_imgs": rearrange(x[BatchKeys.IMAGES][:, 1:][class_examples], "(b m) c h w -> b m c h w", b=B),
+                "support_masks": rearrange(masks[:, :, c, ::][class_examples], "(b m) h w -> b m h w", b=B),
             }
             if n_shots == 1:
                 result = self.predict_mask_1shot(
