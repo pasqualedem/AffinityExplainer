@@ -563,22 +563,23 @@ class DCAMAMultiClass(DCAMA):
         masks = preprocess_masks(
             x[BatchKeys.PROMPT_MASKS], x[BatchKeys.DIMS]
         )
-        assert (
-            masks.shape[0] == 1
-        ), "Only tested with batch size = 1"
+        B = masks.size(0)
+        # assert (
+        #     B == 1
+        # ), "Only tested with batch size = 1"
         results = []
         query = x[BatchKeys.IMAGES][:, :1]
         support = x[BatchKeys.IMAGES][:, 1:]
         # get logits for each class
         for c in range(masks.size(2)):
             class_examples = x[BatchKeys.FLAG_EXAMPLES][:, :, c + 1]
-            n_shots = class_examples.sum().item()
+            n_shots = class_examples.sum().item() // B
             if n_shots > 0:
                 class_input_dict = {
-                    BatchKeys.IMAGES: torch.cat([query, support[class_examples].unsqueeze(0)], dim=1),
-                    BatchKeys.PROMPT_MASKS: masks[:, :, c, ::][
+                    BatchKeys.IMAGES: torch.cat([query, rearrange(support[class_examples], "(b m) c h w -> b m c h w", b=B)], dim=1),
+                    BatchKeys.PROMPT_MASKS: rearrange(masks[:, :, c, ::][
                         class_examples
-                    ].unsqueeze(0),
+                    ], "(b m) h w -> b m h w", b=B),
                 }
                 if self.voting is not None and self.voting < n_shots:
                     num_predictions = (n_shots + self.voting - 1) // self.voting
