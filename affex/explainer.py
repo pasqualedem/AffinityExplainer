@@ -11,6 +11,7 @@ from captum.attr import IntegratedGradients, Saliency, LayerGradCam, GradientSha
 
 
 from affex.data.utils import BatchKeys, min_max_scale
+from affex.shap import FSSGradientShap
 from affex.utils.segmentation import unnormalize
 from affex.utils.utils import ResultDict
 from affex.models.dcama import DCAMAMultiClass
@@ -36,13 +37,14 @@ class LamLayerGradCam(LayerGradCam):
         size = int(math.sqrt(attrs[0].shape[0]))
         print(attrs)
         return (rearrange(attrs.sum(dim=-1), " b (h w) -> b h w", h=size),)
+    
 
 class TraditionalExplainer(nn.Module):
     methods = {
         "integrated_gradients": (IntegratedGradients, {}, {"n_steps": 25, "internal_batch_size": 1}),
         "saliency": (Saliency, {}, {}),
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
-        "gradient_shap": (GradientShap, {}, {}),
+        "gradient_shap": (FSSGradientShap, {}, {}),
         "deep_lift": (DeepLift, {}, {}),
     }
     def __init__(self, model: nn.Module, method: str = "integrated gradients", layer: str = None):
@@ -91,9 +93,9 @@ class TraditionalExplainer(nn.Module):
 
         explanations = []
         if chosen_classes is None:
-            chosen_classes = input_dict[BatchKeys.PROMPT_MASKS].shape[2] - 1
+            chosen_classes = input_dict[BatchKeys.PROMPT_MASKS].shape[2]
         
-        for chosen_class in range(chosen_classes):
+        for chosen_class in range(1, chosen_classes):
             attribution_tuple = self.method.attribute(
                 main_input,
                 additional_forward_args=additional_input,
@@ -105,7 +107,7 @@ class TraditionalExplainer(nn.Module):
             explanation = explanation[:, 1:]
             explanation = min_max_scale(explanation.mean(dim=2))
             explanations.append(explanation)
-            
+        
         return explanations
 
 
