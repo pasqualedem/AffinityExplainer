@@ -1,4 +1,4 @@
-grid: IAUCDAUC
+grid: IAUCDAUC_Coco
 
 parameters:
   model: [dcama]
@@ -34,3 +34,14 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
+
+other_grids:
+  -
+    model: [dmtnet]
+    explainer:
+      name: [affinity, random, saliency, integrated_gradients]
+    dataloader:
+      num_workers: [16]
+      batch_size: [1]
+      csv_folder: [data_csv]
+      num_processes: [2]

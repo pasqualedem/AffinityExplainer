@@ -1,4 +1,4 @@
-grid: CUTIAUCMioU
+grid: CUTIAUCMioU_Pascal
 
 parameters:
   model: [dcama, dmtnet]

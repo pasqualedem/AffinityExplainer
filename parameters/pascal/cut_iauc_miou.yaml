@@ -1,9 +1,9 @@
-grid: CUTIAUCMioU
+grid: CUTIAUCMioU_Pascal
 
 parameters:
-  model: [dcama, dmtnet]
+  model: [dcama]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients]
+    name: [affinity, saliency, random, integrated_gradients, deep_lift]
 
   explanation_masking: [logits]
   # metric_masking: [all]
@@ -42,6 +42,6 @@ parameters:
 
 other_grids:
   -
-    model: [dcama]
+    model: [dmtnet]
     explainer:
-      name: [deep_lift]
+      name: [affinity, random, saliency, integrated_gradients]

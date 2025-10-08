@@ -1,9 +1,9 @@
-grid: Pascal
+grid: IAUCDAUC_Pascal
 
 parameters:
-  model: [dmtnet]
+  model: [dcama]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients]
+    name: [affinity, saliency, random, integrated_gradients, deep_lift]
 
   explanation_masking: [logits]
   log_frequency: [50]
@@ -33,4 +33,15 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
-    num_processes: [2]
+    # num_processes: [4]
+
+other_grids:
+  -
+    model: [dmtnet]
+    explainer:
+      name: [affinity, random, saliency, integrated_gradients]
+    dataloader:
+      num_workers: [16]
+      batch_size: [1]
+      csv_folder: [data_csv]
+      num_processes: [2]

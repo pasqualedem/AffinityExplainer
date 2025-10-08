@@ -1,4 +1,4 @@
-grid: Pascal
+grid: IAUCDAUCMioU_Pascal
 
 parameters:
   model: [dcama]
@@ -11,6 +11,8 @@ parameters:
   metric:
     n_steps: [75]
     substrate_fn: [zero]
+    measure: [miou]
+    skip_empty: [True]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
@@ -34,3 +36,14 @@ parameters:
     batch_size: [1]
     csv_folder: [data_csv]
     # num_processes: [4]
+
+other_grids:
+  -
+    model: [dmtnet]
+    explainer:
+      name: [affinity, random, saliency, integrated_gradients]
+    dataloader:
+      num_workers: [16]
+      batch_size: [1]
+      csv_folder: [data_csv]
+      num_processes: [10]

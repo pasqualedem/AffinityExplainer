@@ -1,9 +1,9 @@
-grid: CUTIAUC
+grid: CUTIAUC_Coco
 
 parameters:
-  model: [dcama, dmtnet]
+  model: [dcama]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients]
+    name: [affinity, saliency, random, integrated_gradients, deep_lift]
 
   explanation_masking: [logits]
   # metric_masking: [all]
@@ -40,5 +40,6 @@ parameters:
 
 other_grids:
   -
-    model: [dcama]
-    explainer: [deep_lift]
+    model: [dmtnet]
+    explainer:
+      name: [affinity, random, saliency, integrated_gradients]

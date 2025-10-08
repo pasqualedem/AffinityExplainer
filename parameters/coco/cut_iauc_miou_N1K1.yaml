@@ -1,4 +1,4 @@
-grid: CUTIAUCMioU
+grid: CUTIAUCMioU_Coco
 
 parameters:
   model: [dcama, dmtnet]
