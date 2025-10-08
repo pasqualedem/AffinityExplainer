@@ -11,6 +11,7 @@ from affex.collect import runs_collect
 from affex.data import get_dataloaders
 from affex.data.utils import BatchKeys
 from affex.evaluate import evaluate
+from affex.computational import evaluate_computational
 from affex.utils.logger import get_logger
 from affex.utils.utils import load_yaml
 from affex.utils.grid import create_experiment
@@ -18,6 +19,15 @@ from affex.utils.run import ParallelRun
 
 
 OUT_FOLDER = "out"
+
+FUNCTIONS = {
+    "evaluate": evaluate,
+    "computational": evaluate_computational,
+}
+FUNCTION_SLURMS = {
+    "evaluate": "slurm/launch_run",
+    "computational": "slurm/launch_computational",
+}
 
 
 @click.group()
@@ -70,7 +80,19 @@ def manage_multiprocess_run(run_parameters, run_name, logger):
     is_flag=True,
     help="Only create the slurm scripts",
 )
-def grid(parameters, parallel, only_create=False):
+@click.option(
+    "--function",
+    default="evaluate",
+    help="Name of the function to run, either 'evaluate' or 'computational'",
+)
+def grid(parameters, parallel, only_create=False, function="evaluate"):
+    assert function in FUNCTIONS, f"Function {function} not recognized, available functions: {list(FUNCTIONS.keys())}"
+    
+    run_function = FUNCTIONS[function]
+    slurm_script = FUNCTION_SLURMS[function]
+    
+    assert os.path.exists(slurm_script), f"Slurm script {slurm_script} does not exist"
+    
     parameters = load_yaml(parameters)
     grid_name = parameters["grid"]
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -115,7 +137,7 @@ def grid(parameters, parallel, only_create=False):
                     )
                 else:
                     grid_logger.info(f"Running run {i+1}/{len(runs_parameters)}")
-                evaluate(subrun_parameters, run_name=subrun_name)
+                run_function(subrun_parameters, run_name=subrun_name)
 
 
 @cli.command("run")
@@ -139,14 +161,23 @@ def grid(parameters, parallel, only_create=False):
     default=None,
     help="Name of the run, if not provided, it will be generated based on the current time",
 )
+@click.option(
+    "--function",
+    default="evaluate",
+    help="Name of the function to run, either 'evaluate' or 'computational'",
+)
 def run(
     parameters,
     run_name=None,
     disable_log_params=False,
     disable_log_on_file=False,
+    function="evaluate",
 ):
+    assert function in FUNCTIONS, f"Function {function} not recognized, available functions: {list(FUNCTIONS.keys())}"
+    run_function = FUNCTIONS[function]
+    
     parameters = load_yaml(parameters)
-    evaluate(
+    run_function(
         parameters,
         run_name,
         not disable_log_params,

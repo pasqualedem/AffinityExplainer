@@ -1,0 +1,33 @@
+grid: Computation
+
+parameters:
+  model: [dcama, dmtnet]
+  explainer:
+    name: [affinity, saliency, integrated_gradients, deep_lift, random]
+
+  explanation_masking: [logits]
+  num_steps: [100]
+  warmup_steps: [10]
+
+  dataset: # parameters depending on the class you defined for the dataset
+    datasets:
+      val_coco20i_N1K1:
+        name: [coco]
+        instances_path: [data/coco/annotations/instances_val2014.json]
+        all_example_categories: [False]
+        img_dir: [data/coco/train_val_2017]
+        n_shots: [1]
+        n_ways: [1]
+        do_subsample: [False]
+        add_box_noise: [False]
+        val_fold_idx: [null]
+        n_folds: [null]
+        split: ["val"]
+    common:
+      remove_small_annotations: [True]
+      custom_preprocess: [False]
+      maintain_gt_shape: [False]
+  dataloader:
+    num_workers: [16]
+    batch_size: [1]
+    csv_folder: [data_csv]
