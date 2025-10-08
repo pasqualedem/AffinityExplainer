@@ -1,0 +1,52 @@
+grid: IAUCDAUCCross
+
+parameters:
+  model: [dmtnet]
+  explainer:
+    name: [affinity, saliency, random, integrated_gradients]
+
+  explanation_masking: [logits]
+  log_frequency: [50]
+
+  metric:
+    n_steps: [75]
+    substrate_fn: [zero]
+
+  dataset: # parameters depending on the class you defined for the dataset
+    datasets:
+      -
+        val_deepglobe_N1K5:
+          name: deepglobe
+          datapath: "data"
+          split: "val"
+          val_fold_idx: 0
+          n_shots: 5
+          n_ways: 1
+          val_num_samples: 1000
+      -
+        val_isic_N1K5:
+          name: isic
+          datapath: "data/ISIC_cls"
+          split: "val"
+          val_fold_idx: 0
+          n_shots: 5
+          n_ways: 1
+          val_num_samples: 1000
+      -
+        val_lung_N1K5:
+          name: lung
+          datapath: "data"
+          split: "test"
+          val_fold_idx: 0
+          n_shots: 5
+          n_ways: 1
+          val_num_samples: 1000
+    common:
+      remove_small_annotations: [True]
+      custom_preprocess: [False]
+      maintain_gt_shape: [False]
+  dataloader:
+    num_workers: [0]
+    batch_size: [1]
+    csv_folder: [data_csv]
+    num_processes: [2]
