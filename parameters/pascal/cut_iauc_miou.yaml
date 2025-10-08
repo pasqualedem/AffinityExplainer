@@ -39,3 +39,9 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
+
+other_grids:
+  -
+    model: [dcama]
+    explainer:
+      name: [deep_lift]

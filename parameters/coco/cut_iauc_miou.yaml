@@ -3,7 +3,7 @@ grid: CUTIAUCMioU
 parameters:
   model: [dcama, dmtnet]
   explainer:
-    name: [deep_lift]
+    name: [affinity, saliency, random, integrated_gradients]
 
   explanation_masking: [logits]
   # metric_masking: [all]
