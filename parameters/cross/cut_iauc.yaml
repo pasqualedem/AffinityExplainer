@@ -3,7 +3,7 @@ grid: CUTIAUCCross
 parameters:
   model: [dmtnet]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients]
+    name: [saliency, integrated_gradients]
 
   explanation_masking: [logits]
   # metric_masking: [all]
