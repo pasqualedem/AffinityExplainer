@@ -11,6 +11,7 @@ from captum.attr import IntegratedGradients, Saliency, LayerGradCam, GradientSha
 
 
 from affex.data.utils import BatchKeys, min_max_scale
+from affex.lime import FSSLime
 from affex.shap import FSSGradientShap
 from affex.utils.segmentation import unnormalize
 from affex.utils.utils import ResultDict
@@ -46,16 +47,17 @@ class TraditionalExplainer(nn.Module):
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
         "gradient_shap": (FSSGradientShap, {}, {}),
         "deep_lift": (DeepLift, {}, {}),
+        "lime": (FSSLime, {}, {"use_baselines": True})
     }
-    def __init__(self, model: nn.Module, method: str = "integrated gradients", layer: str = None):
+    def __init__(self, model: nn.Module, method: str = "integrated gradients", layer: str = None, **kwargs):
         super(TraditionalExplainer, self).__init__()
         self.model = model
         
-        method, init_kwargs, kwargs = self.methods[method]
+        method, init_kwargs, forward_kwargs = self.methods[method]
         if method == LamLayerGradCam:
             init_kwargs["layer"] = layer
-        self.method = method(self, **init_kwargs)
-        self.method_kwargs = kwargs
+        self.method = method(self, **init_kwargs, **kwargs)
+        self.method_kwargs = forward_kwargs
 
     def prepare(self, explanation_mask):
         self.explanation_mask = explanation_mask
@@ -313,6 +315,7 @@ EXPLAINER_REGISTRY = {
     "deep_lift": TraditionalExplainer,
     "affinity": AffinityExplainer,
     "random": RandomExplainer,
+    "lime": TraditionalExplainer,
 }
 
 
