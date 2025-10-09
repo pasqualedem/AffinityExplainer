@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#SBATCH -A IscrC_MOSES
+#SBATCH -A IscrC_ARTURO
 #SBATCH -p boost_usr_prod
-#SBATCH --qos boost_qos_dbg
-#SBATCH --time=00:30:00
+#SBATCH --qos normal
+#SBATCH --time=02:00:00
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mem=123000
-#SBATCH --job-name=TFSS
-#SBATCH --out=out/tfss.log
-#SBATCH --err=out/tfss.log
+#SBATCH --job-name=CFSSXAI
+#SBATCH --out=out/cfssxai.log
+#SBATCH --err=out/cfssxai.log
 
-srun ./slurm/launch_speed_exe $@
+srun ./slurm/launch_computational_exe $@

@@ -122,6 +122,7 @@ def grid(parameters, parallel, only_create=False, function="evaluate"):
                     multi_gpu=False,
                     logger=grid_logger,
                     run_name=subrun_name,
+                    slurm_script=slurm_script,
                 )
                 run.launch(
                     only_create=only_create,

@@ -9,7 +9,9 @@ PREFIX = "wandb: "
 def sync_folder(path):
     print(f'Syncing folder {path}')
     files = os.listdir(path)
-    out_files = [f for f in files if f.endswith('.log') and not f.startswith('grid')]
+    folders = [f for f in files if os.path.isdir(os.path.join(path, f)) and f.startswith('run_')]
+    out_files = [os.path.join(f, 'log.log') for f in folders if os.path.exists(os.path.join(path, f, 'log.log'))]
+    
     failed_files = []
     exception_files = []
     for f in out_files:
