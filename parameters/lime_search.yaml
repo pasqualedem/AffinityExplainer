@@ -16,7 +16,7 @@ parameters:
   metric:
     n_steps: [1]
     substrate_fn: [zero]
-    percentage: [0.01, 0.05]
+    percentage: [0.01]
     measure: [miou]
     loss: [True]
     skip_empty: [True]
