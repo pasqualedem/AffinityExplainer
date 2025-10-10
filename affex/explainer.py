@@ -47,7 +47,7 @@ class TraditionalExplainer(nn.Module):
         "gradcam": (LamLayerGradCam, {}, {"attr_dim_summation": False}),
         "gradient_shap": (FSSGradientShap, {}, {}),
         "deep_lift": (DeepLift, {}, {}),
-        "lime": (FSSLime, {}, {"use_baselines": True})
+        "lime": (FSSLime, {"use_baselines": False}, {})
     }
     def __init__(self, model: nn.Module, method: str = "integrated gradients", layer: str = None, **kwargs):
         super(TraditionalExplainer, self).__init__()
@@ -56,7 +56,9 @@ class TraditionalExplainer(nn.Module):
         method, init_kwargs, forward_kwargs = self.methods[method]
         if method == LamLayerGradCam:
             init_kwargs["layer"] = layer
-        self.method = method(self, **init_kwargs, **kwargs)
+            
+        init_kwargs = {**init_kwargs, **kwargs}
+        self.method = method(self, **init_kwargs)
         self.method_kwargs = forward_kwargs
 
     def prepare(self, explanation_mask):

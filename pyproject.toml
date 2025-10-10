@@ -17,6 +17,7 @@ dependencies = [
     "pycocotools>=2.0.8",
     "pyyaml>=6.0.2",
     "safetensors>=0.5.3",
+    "scikit-image>=0.25.2",
     "scikit-learn>=1.6.1",
     "streamlit>=1.44.1",
     "streamlit-image-coordinates>=0.2.1",
