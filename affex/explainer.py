@@ -1,6 +1,7 @@
 import math
 from typing import Dict, List, Tuple
 import torch
+import inspect
 from einops import rearrange, repeat
 
 import torch.nn.functional as F
@@ -64,20 +65,27 @@ class TraditionalExplainer(nn.Module):
     def __init__(
         self,
         model: nn.Module,
-        method: str = "integrated gradients",
+        name: str = "integrated gradients",
         layer: str = None,
         **kwargs,
     ):
         super(TraditionalExplainer, self).__init__()
         self.model = model
 
-        method, init_kwargs, forward_kwargs = self.methods[method]
+        method, default_init_kwargs, forward_kwargs = self.methods[name]
         if method == LamLayerGradCam:
-            init_kwargs["layer"] = layer
+            default_init_kwargs["layer"] = layer
 
-        init_kwargs = {**init_kwargs, **kwargs}
+        passed_init_kwargs = set(inspect.signature(method.__init__).parameters.keys()).intersection(kwargs.keys())
+        passed_attribute_kwargs = set(inspect.signature(method.attribute).parameters.keys()).intersection(kwargs.keys())
+        # warning if any of the passed kwargs is not used
+        unused_kwargs = set(kwargs.keys()) - (passed_init_kwargs | passed_attribute_kwargs)
+        if len(unused_kwargs) > 0:
+            print(f"Warning: the following kwargs are not used: {unused_kwargs}")
+
+        init_kwargs = {**default_init_kwargs, **{k: kwargs[k] for k in passed_init_kwargs}}
         self.method = method(self, **init_kwargs)
-        self.method_kwargs = forward_kwargs
+        self.method_kwargs = {**forward_kwargs, **{k: kwargs[k] for k in passed_attribute_kwargs}}
 
     def prepare(self, explanation_mask):
         self.explanation_mask = explanation_mask
@@ -443,4 +451,4 @@ def build_explainer(model, name, params, device="cpu"):
     if name == "affinity" or name == "random":
         return explainer_class(model, **params)
 
-    return explainer_class(model=model, method=name, **params).to(device)
+    return explainer_class(model=model, name=name, **params).to(device)
