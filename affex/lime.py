@@ -171,6 +171,8 @@ class FSSLime(LimeBase):
         self.use_baselines = use_baselines
         self.slic_num_segments = slic_num_segments
         self.current_valid_masks = None
+        self.kernel_width = kernel_width
+        self.image_weight = image_weight
 
     def fss_from_interp_rep_transform(
         self, curr_sample, original_inputs, reduce_empty=True, **kwargs
@@ -431,7 +433,14 @@ class FSSLime(LimeBase):
             curr_model_inputs.append(curr_model_input)
 
             curr_sim = self.similarity_func(
-                inputs, curr_model_input, interpretable_inp, **kwargs
+                inputs,
+                curr_model_input,
+                interpretable_inp,
+                **{
+                    **kwargs,
+                    "kernel_width": self.kernel_width,
+                    "alpha": self.image_weight,
+                },
             )
             similarities.append(
                 curr_sim.flatten()
@@ -494,8 +503,10 @@ class FSSLime(LimeBase):
         dataset = CleanTensorDataset(
             combined_interp_inps, combined_outputs, combined_sim
         )
-        if len(dataset) == 0: # No valid samples
-            warnings.warn("No valid samples to fit LIME interpretable model!", stacklevel=1)
+        if len(dataset) == 0:  # No valid samples
+            warnings.warn(
+                "No valid samples to fit LIME interpretable model!", stacklevel=1
+            )
             return torch.zeros_like(inputs[1], dtype=torch.float)
         self.interpretable_model.fit(DataLoader(dataset, batch_size=batch_count))
         return self.interpretable_model.representation()
