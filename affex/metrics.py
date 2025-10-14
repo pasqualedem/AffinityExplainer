@@ -8,6 +8,8 @@ from tqdm import tqdm
 from torchmetrics import Metric
 from torchmetrics.classification import MulticlassJaccardIndex
 
+from captum.metrics import infidelity
+
 from affex.data.utils import BatchKeys
 from affex.utils.utils import ResultDict, to_device
 
@@ -443,3 +445,51 @@ class FSSCausalMetric(Metric):
         self.results = []
         self.mid_statuses = []
         self.computed_n_steps = None
+
+
+def perturb_images(images, inputs):
+    r"""Perturb images by adding gaussian noise to the input images."""
+    noise = torch.randn_like(images) * inputs
+    return noise, images + noise
+
+
+class FSSInfidelity(Metric):
+    def __init__(self, model, n_perturb_samples=10, perturb_fraction=0.1):
+        super().__init__()
+        self.model = model
+        self.n_perturb_samples = n_perturb_samples
+        self.perturb_fraction = perturb_fraction
+        self.infidelities = None
+
+    def update(self, input_dict, explanation, explanation_mask, gt):
+        r"""Update metric with new batch of images.
+
+        Args:
+            input_dict (dict): dictionary containing image tensor, image masks
+            exp_batch (np.ndarray): saliency map over the support iamges
+            explanation_mask (torch.tensor): mask over the query image
+        """
+        images = input_dict[BatchKeys.IMAGES]
+        B, M, C, H, W = images.shape
+        device = images.device
+
+        infidelity_score = infidelity(
+            forward_func=self.model.forward,
+            perturb_func=perturb_images,
+            inputs=images,
+            attributions=explanation,
+            n_perturb_samples=self.n_perturb_samples,
+            perturb_fraction=self.perturb_fraction,
+        )
+        self.infidelities.append(infidelity_score.cpu().numpy())
+
+    def compute(self):
+        r"""Compute final infidelity."""
+        if self.infidelities is None or len(self.infidelities) == 0:
+            raise ValueError("No infidelities to compute.")
+        self.infidelities = np.concatenate(self.infidelities, axis=0)
+        return {"infidelity": np.mean(self.infidelities), "all": self.infidelities}
+    
+    def reset(self):
+        r"""Reset the metric."""
+        self.infidelities = []

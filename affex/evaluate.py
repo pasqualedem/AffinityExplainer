@@ -19,7 +19,7 @@ lt.monkey_patch()
 from affex.data import get_dataloaders
 from affex.data.utils import BatchKeys
 from affex.explainer import build_explainer
-from affex.metrics import FSSCausalMetric
+from affex.metrics import FSSCausalMetric, FSSInfidelity
 from affex.models import build_model, build_model_preconfigured
 from affex.substitution import Substitutor
 from affex.utils.logger import get_logger
@@ -133,7 +133,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
 
     masking_type = parameters["explanation_masking"]
     metric_masking_type = parameters.get("metric_masking", masking_type)
-    explanation_size = parameters.get("explanation_size", image_size)
+    evaluation_size = parameters.get("evaluation_size", image_size)
     metrics = {}
     
     if not parameters.get("disable_auc", False):
@@ -148,6 +148,12 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             mode="del",
             **parameters["metric"]
         )
+    if parameters.get("infidelity", False):
+        metrics["infidelity"] = FSSInfidelity(
+            model=model,
+            **parameters["metric"]
+        )
+
     metrics = MetricCollection(metrics)
 
     for dataset_name, val_dataloader in val.items():
@@ -172,17 +178,16 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             with torch.no_grad():
                 result = model(input_dict, postprocess=False)
 
-            explanation_size = explanation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
-            explanation_mask = get_explanation_mask(input_dict, gt, result, explanation_size, masking_type)
+            evaluation_size = evaluation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
+            explanation_mask = get_explanation_mask(input_dict, gt, result, evaluation_size, masking_type)
             metric_mask = get_explanation_mask(
-                input_dict, gt, result, explanation_size, metric_masking_type
+                input_dict, gt, result, evaluation_size, metric_masking_type
             ) if metric_masking_type != masking_type else explanation_mask
 
             bar.set_description(f"Calculating explanation")
             explanation = explainer.explain(
                 input_dict=input_dict,
                 explanation_mask=explanation_mask,
-                explanation_size=explanation_size,
             )
             
             assert len(explanation) == 1, "Only support one class for now"

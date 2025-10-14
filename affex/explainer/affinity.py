@@ -89,10 +89,15 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation", use_softmax=True):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True):
         self.model = model
         self.aggregation_method = aggregation_method
         self.use_softmax = use_softmax
+        
+        if isinstance(explanation_size, int):
+            explanation_size = (explanation_size, explanation_size)
+            
+        self.explanation_size = explanation_size
         if not any(isinstance(model, cls) for cls in MODEL_EXPLAINER_REGISTRY.keys()):
             raise ValueError(
                 f"Model {model.__class__.__name__} is not supported for explanations. Supported models: {list(MODEL_EXPLAINER_REGISTRY.keys())}"
@@ -106,7 +111,6 @@ class AffinityExplainer:
         input_dict,
         result=None,
         explanation_mask="logits",
-        explanation_size=None,
         selected_classes=None,
         gt=None,
     ):
@@ -122,8 +126,11 @@ class AffinityExplainer:
         if selected_classes is None:
             selected_classes = list(range(num_classes))
 
-        if explanation_size is None:
-            explanation_size = input_dict[BatchKeys.IMAGES][:, 0].shape[2:]
+        image_size = input_dict[BatchKeys.IMAGES].shape[-2:]
+        if self.explanation_size is None:
+            explanation_size = image_size
+        else:
+            explanation_size = self.explanation_size
 
         if explanation_mask == "logits":
             explanation_mask = get_explanation_mask(
@@ -144,6 +151,13 @@ class AffinityExplainer:
                 target_shape=explanation_size,
                 masking_type=explanation_mask,
             )
+        elif isinstance(explanation_mask, torch.Tensor):
+            if explanation_mask.shape[-2:] != explanation_size:
+                explanation_mask = resize(
+                    explanation_mask.float().unsqueeze(0),
+                    explanation_size,
+                    interpolation=TvT.InterpolationMode.NEAREST,
+                ).bool().squeeze(0)
 
         if len(explanation_mask.shape) == 2:  # We need class dimension
             explanation_mask = repeat(explanation_mask, "h w -> c h w", c=num_classes)
@@ -250,6 +264,15 @@ class AffinityExplainer:
                     f"Aggregation method {self.aggregation_method} is not supported. Supported methods: ['feature_ablation', 'mean']"
                 )
 
+            if weighted_contrib.shape[-2:] != image_size:
+                weighted_contrib = resize(
+                    weighted_contrib,
+                    image_size,
+                    interpolation=TvT.InterpolationMode.BILINEAR,
+                    antialias=False,
+                )
+            
             # explanations.append((mean_contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots))
             explanations.append(weighted_contrib)
+            
         return explanations
