@@ -13,11 +13,13 @@ import wandb
 import yaml
 import lovely_tensors as lt
 
+from affex.explainer.affinity import get_explanation_mask
+
 lt.monkey_patch()
 
 from affex.data import get_dataloaders
 from affex.data.utils import BatchKeys
-from affex.explainer import build_explainer, get_explanation_mask
+from affex.explainer import build_explainer
 from affex.models import build_model_preconfigured
 from affex.substitution import Substitutor
 from affex.utils.logger import get_logger

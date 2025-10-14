@@ -688,9 +688,16 @@ def get_support_batch(examples):
     return support_batch, support_gt
 
 
-def min_max_scale(tensor):
-    return (tensor - tensor.min()) / (tensor.max() - tensor.min())
-
+def min_max_scale(tensor, quantile=None, clamp=False):
+    if quantile is None:
+        tmax = tensor.max()
+    else:
+        tmax = torch.quantile(tensor, quantile)
+    tmin = tensor.min()
+    value = (tensor - tmin) / (tmax - tmin)
+    if clamp:
+        value = value.clamp(0, 1)
+    return value
 
 def sum_scale(tensor):
     return tensor / tensor.sum()

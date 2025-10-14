@@ -18,7 +18,8 @@ import torch
 import plotly.express as px
 import plotly.graph_objects as go
 
-from affex.explainer import EXPLAINER_REGISTRY, build_explainer, get_explanation_mask
+from affex.explainer import EXPLAINER_REGISTRY, build_explainer
+from affex.explainer.affinity import get_explanation_mask
 from affex.utils.segmentation import create_rgb_segmentation, unnormalize
 from affex.utils.utils import (
     ResultDict,

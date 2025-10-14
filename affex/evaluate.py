@@ -12,12 +12,13 @@ from tqdm import tqdm
 import yaml
 import lovely_tensors as lt
 
+from affex.explainer.affinity import get_explanation_mask
 from affex.utils.segmentation import create_rgb_segmentation, unnormalize
 lt.monkey_patch()
 
 from affex.data import get_dataloaders
 from affex.data.utils import BatchKeys
-from affex.explainer import build_explainer, get_explanation_mask
+from affex.explainer import build_explainer
 from affex.metrics import FSSCausalMetric
 from affex.models import build_model, build_model_preconfigured
 from affex.substitution import Substitutor
