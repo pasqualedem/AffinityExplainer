@@ -12,6 +12,7 @@ from typing import Mapping
 import yaml
 from safetensors import safe_open
 from safetensors.torch import save_file
+from copy import deepcopy
 
 # from label_anything.models.lam import Lam 
 
@@ -428,6 +429,10 @@ def hierarchical_uniform_sampling(N, M):
         selected_numbers.sort()
     
     return selected_numbers[:M]  # Ensure exactly M numbers
+
+
+def clone_input_dict(input_dict):
+    return {k: v.clone() if isinstance(v, torch.Tensor) else deepcopy(v) for k, v in input_dict.items()}
 
 
 class PrintLogger:
