@@ -2,7 +2,7 @@ from einops import rearrange
 import numpy as np
 
 from ..data.utils import BatchKeys, min_max_scale
-from ..utils.utils import ResultDict
+from ..utils.utils import ResultDict, clone_input_dict
 
 from .blur_ig import FSSBlurIG
 from .xrai import FSSXRAI
@@ -158,7 +158,7 @@ class SaliencyExplainer(nn.Module):
                 call_model_function=self.call_model_function,
                 call_model_args={
                     "target": chosen_class,
-                    "input_dict": input_dict,
+                    "input_dict": clone_input_dict(input_dict),
                 },
                 **curr_method_kwargs,
             )
