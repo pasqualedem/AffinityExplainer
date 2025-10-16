@@ -1,6 +1,6 @@
 from .affinity import AffinityExplainer
 from .captum import CaptumExplainer
-from .random import RandomExplainer
+from .random import GaussianNoiseMask, RandomExplainer
 from .saliency import SaliencyExplainer
 
 
@@ -15,6 +15,7 @@ EXPLAINER_REGISTRY = {
     "deep_lift": CaptumExplainer,
     "affinity": AffinityExplainer,
     "random": RandomExplainer,
+    "gaussian_noise": GaussianNoiseMask,
     "lime": CaptumExplainer,
     "guided_ig": SaliencyExplainer,
     "blur_ig": SaliencyExplainer,
@@ -31,7 +32,7 @@ def build_explainer(model, name, params, device="cpu"):
         )
 
     explainer_class = EXPLAINER_REGISTRY[name]
-    if name == "affinity" or name == "random":
+    if name in ["random", "gaussian_noise", "affinity"]:
         return explainer_class(model, **params)
 
     return explainer_class(model=model, name=name, **params).to(device)
