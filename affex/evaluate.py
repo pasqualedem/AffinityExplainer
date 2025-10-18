@@ -12,18 +12,19 @@ from tqdm import tqdm
 import yaml
 import lovely_tensors as lt
 
-from affex.explainer.affinity import get_explanation_mask
-from affex.utils.segmentation import create_rgb_segmentation, unnormalize
+from .explainer.affinity import get_explanation_mask
+from .utils.segmentation import create_rgb_segmentation, unnormalize
 lt.monkey_patch()
 
-from affex.data import get_dataloaders
-from affex.data.utils import BatchKeys
-from affex.explainer import build_explainer
-from affex.metrics import FSSCausalMetric, FSSInfidelity
-from affex.models import build_model, build_model_preconfigured
-from affex.substitution import Substitutor
-from affex.utils.logger import get_logger
-from affex.utils.utils import ResultDict, to_device
+from .data import get_dataloaders
+from .data.utils import BatchKeys
+from .explainer import build_explainer
+from .metrics import FSSCausalMetric, FSSInfidelity
+from .models import build_model, build_model_preconfigured
+from .substitution import Substitutor
+from .utils.logger import get_logger
+from .utils.utils import ResultDict, to_device
+from .cache import get_cached_model_output, get_cached_attribution
 
 from torchmetrics import MetricCollection
 
@@ -83,6 +84,81 @@ def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx
         plt.savefig(os.path.join(metrics_folders, f"{metric_name}_scores.svg"))
         plt.clf()
         plt.close()
+
+
+def compute_model_output(
+    input_dict,
+    parameters,
+    model,
+    dataset_id,
+    device
+):
+    """Compute the model output for a given input dictionary."""
+    if parameters.get("cache", True):
+        model_name = parameters["model"]
+        cache_dir = parameters.get("cache_dir", os.environ.get("AFFEX_CACHE_DIR", "cache/model_outputs"))
+        
+        image_ids = input_dict["image_ids"][0]
+        classes = input_dict["classes"][0]
+
+        def compute_fn():
+            with torch.no_grad():
+                input_dict_device = to_device(input_dict, device)
+                output = model(input_dict_device, postprocess=False)
+            return output
+
+        model_output, output_hash = get_cached_model_output(
+            dataset_id, model_name, image_ids, classes,
+            cache_dir=cache_dir,
+            compute_fn=compute_fn,
+        )
+    else:
+        with torch.no_grad():
+            input_dict_device = to_device(input_dict, device)
+            model_output = model(input_dict_device, postprocess=False)
+        output_hash = None
+    return model_output, output_hash
+
+
+def compute_model_attribution(
+    input_dict,
+    parameters,
+    explainer,
+    dataset_id,
+    output_hash,
+    masking_type,
+    explanation_mask,
+):
+    """Compute the model attribution for a given input dictionary."""
+    if parameters.get("cache", True):
+        model_name = parameters["model"]
+        algo_name = parameters["explainer"]["name"]
+        cache_dir = parameters.get("cache_dir", os.environ.get("AFFEX_CACHE_DIR", "cache/attributions"))
+        
+        def compute_attribution():
+            explanation = explainer.explain(
+                input_dict=input_dict,
+                explanation_mask=explanation_mask,
+            )
+            return explanation
+    
+        explainer_params = parameters["explainer"].copy()
+        explainer_params.pop("name", None)
+    
+        # 2️⃣ Cache attribution (depends on model_output)
+        attribution = get_cached_attribution(
+            dataset_id, model_name, algo_name, explainer_params,
+            mask_logic=masking_type, output_hash=output_hash,
+            cache_dir=cache_dir,
+            compute_fn=compute_attribution
+        )
+    else:
+        explanation = explainer.explain(
+            input_dict=input_dict,
+            explanation_mask=explanation_mask,
+        )
+        attribution = explanation
+    return attribution
 
 
 def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
@@ -175,8 +251,13 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             gt = to_device(gt, device)
             
             bar.set_description(f"Calculating prediction")
-            with torch.no_grad():
-                result = model(input_dict, postprocess=False)
+            result, output_hash = compute_model_output(
+                input_dict,
+                parameters,
+                model,
+                dataset_id=dataset_name,
+                device=device,
+            )
 
             evaluation_size = evaluation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
             explanation_mask = get_explanation_mask(input_dict, gt, result, evaluation_size, masking_type)
@@ -185,8 +266,13 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
             ) if metric_masking_type != masking_type else explanation_mask
 
             bar.set_description(f"Calculating explanation")
-            explanation = explainer.explain(
-                input_dict=input_dict,
+            explanation = compute_model_attribution(
+                input_dict,
+                parameters,
+                explainer,
+                dataset_id=dataset_name,
+                output_hash=output_hash,
+                masking_type=masking_type,
                 explanation_mask=explanation_mask,
             )
             
