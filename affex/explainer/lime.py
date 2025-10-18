@@ -83,19 +83,20 @@ def fss_perturb_func(original_input, **kwargs):
         active = torch.randint(0, 2, (1, K)).float().to(images.device)
         # # Add the query support features as always active
         active = torch.cat([active, torch.ones(1, 1).to(active.device)], dim=1)
+        binary_mask = active[0][feature_mask].bool()
 
         # Check if any feature mask is all zeros
-        active_masks = (feature_mask * masks).any(dim=(2, 3, 4))  # [B, M]
+        active_masks = (binary_mask * masks).any(dim=(2, 3, 4))  # [B, M]
         # Check any batch has all-zero mask
         if not active_masks.any(dim=1).all():
             for i in range(active_masks.shape[0]):
                 if not active_masks[i].any():
-                    mask_features = (feature_mask * masks)[i].unique()
+                    mask_features = (masks * (feature_mask+1))[i].unique(sorted=True)[1:] - 1
                     # Active one random feature
                     rand_feat = mask_features[
                         torch.randint(0, len(mask_features), (1,))
                     ]
-                    active[i, rand_feat] = 1.0
+                    active[i, rand_feat.long()] = 1.0
 
         return active
 
