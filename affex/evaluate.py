@@ -24,7 +24,7 @@ from .models import build_model, build_model_preconfigured
 from .substitution import Substitutor
 from .utils.logger import get_logger
 from .utils.utils import ResultDict, to_device
-from .cache import get_cached_model_output, get_cached_attribution
+from .cache import get_cached_model_output, get_cached_attribution, CACHE_FREE_ALGOS
 
 from torchmetrics import MetricCollection
 
@@ -130,9 +130,9 @@ def compute_model_attribution(
     explanation_mask,
 ):
     """Compute the model attribution for a given input dictionary."""
-    if parameters.get("cache", True):
+    algo_name = parameters["explainer"]["name"]
+    if parameters.get("cache", True) and algo_name not in CACHE_FREE_ALGOS:
         model_name = parameters["model"]
-        algo_name = parameters["explainer"]["name"]
         cache_dir = parameters.get("cache_dir", os.environ.get("AFFEX_CACHE_DIR", "cache/attributions"))
         
         def compute_attribution():
