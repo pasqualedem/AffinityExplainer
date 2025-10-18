@@ -36,7 +36,7 @@ def cli():
     pass
 
 
-def manage_multiprocess_run(run_parameters, run_name, logger):
+def manage_multiprocess_run(run_parameters, run_name, logger, job_parallelism=None):
     """
     Manage the multiprocess run.
     This function is used to launch the run in parallel or sequentially.
@@ -45,9 +45,14 @@ def manage_multiprocess_run(run_parameters, run_name, logger):
         multi_runs = [
                 copy.deepcopy(run_parameters) for _ in range(run_parameters["dataloader"]["num_processes"])
             ]
-        run_names = [
-            f"{run_name}/p_{str(i).zfill(3)}" for i in range(run_parameters["dataloader"]["num_processes"])
-        ]
+        if job_parallelism is not None and job_parallelism > 1:
+            run_names = [
+                f"{run_name}/job_{str(i//job_parallelism).zfill(3)}/p_{str(i%job_parallelism).zfill(3)}" for i in range(run_parameters["dataloader"]["num_processes"])
+            ]
+        else:    
+            run_names = [
+                f"{run_name}/p_{str(i).zfill(3)}" for i in range(run_parameters["dataloader"]["num_processes"])
+            ]
         
         logger.info(f"Running {len(multi_runs)} processes in parallel")
         for i, run_parameters in enumerate(multi_runs):
@@ -85,7 +90,13 @@ def manage_multiprocess_run(run_parameters, run_name, logger):
     default="evaluate",
     help="Name of the function to run, either 'evaluate' or 'computational'",
 )
-def grid(parameters, parallel, only_create=False, function="evaluate"):
+@click.option(
+    "--job_parallelism",
+    default=None,
+    type=int,
+    help="If --parallel is provided, and dataloader.num_processes is provided in the parameters, this will set the number of processes to use in a single job, should be divisor of dataloader.num_processes",
+)
+def grid(parameters, parallel, only_create=False, function="evaluate", job_parallelism=None):
     assert function in FUNCTIONS, f"Function {function} not recognized, available functions: {list(FUNCTIONS.keys())}"
     
     run_function = FUNCTIONS[function]
@@ -111,12 +122,17 @@ def grid(parameters, parallel, only_create=False, function="evaluate"):
         run_name = f"{log_folder}/run_{i}"
         os.makedirs(run_name, exist_ok=True)
         multi_runs, run_names = manage_multiprocess_run(
-            run_parameters, run_name, grid_logger
+            run_parameters, run_name, grid_logger, job_parallelism
         )
-        for k, (subrun_parameters, subrun_name) in enumerate(
-            zip(multi_runs, run_names)
-        ):
-            if parallel:
+        if parallel:
+            job_parallelism = job_parallelism if job_parallelism is not None else 1
+            jobs = len(multi_runs) // job_parallelism
+            for j in range(jobs):
+                subrun_parameters = multi_runs[j*(job_parallelism):(j+1)*(job_parallelism)]
+                subrun_name = run_names[j*(job_parallelism):(j+1)*(job_parallelism)]
+                if len(subrun_parameters) == 1:
+                    subrun_name = subrun_name[0]
+                    subrun_parameters = subrun_parameters[0]
                 run = ParallelRun(
                     subrun_parameters,
                     multi_gpu=False,
@@ -131,7 +147,10 @@ def grid(parameters, parallel, only_create=False, function="evaluate"):
                         "--disable_log_on_file",
                     ],
                 )
-            else:
+        else:
+            for k, (subrun_parameters, subrun_name) in enumerate(
+                zip(multi_runs, run_names)
+            ):
                 if len(multi_runs) > 1:
                     grid_logger.info(
                         f"Running subrun {k+1}/{len(multi_runs)} in run {i+1}/{len(runs_parameters)}"
