@@ -136,7 +136,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     evaluation_size = parameters.get("evaluation_size", image_size)
     metrics = {}
     
-    if not parameters.get("disable_auc", False):
+    if not parameters.get("disable_iauc", False):
         metrics["iauc"] = FSSCausalMetric(
                 model=model,
                 mode="ins",
@@ -210,12 +210,15 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
                 log_string += f"iAUC: {scores['iauc_auc']:.4f}, "
             if scores.get("dauc_auc") is not None:
                 log_string += f"dAUC: {scores['dauc_auc']:.4f}, "
+            if scores.get("infidelity_infidelity") is not None:
+                log_string += f"Infidelity: {scores['infidelity_infidelity']:.4f}, "
+                
                 
             logger.info(
                 f"Batch {i} - {dataset_name}: {log_string}"
             )
 
-            if i % log_frequency == 0:
+            if log_frequency and i % log_frequency == 0:
                 log_step(input_dict, gt, result, explanation, metrics, run_name, i)
 
 
