@@ -1,4 +1,4 @@
-from .affinity import AffinityExplainer
+from .affinity import AffinityExplainer, MaskedAffinityExplainer
 from .captum import CaptumExplainer
 from .random import GaussianNoiseMask, RandomExplainer
 from .saliency import SaliencyExplainer
@@ -14,6 +14,7 @@ EXPLAINER_REGISTRY = {
     "gradient_shap": CaptumExplainer,
     "deep_lift": CaptumExplainer,
     "affinity": AffinityExplainer,
+    "masked_affinity": MaskedAffinityExplainer,
     "random": RandomExplainer,
     "gaussian_noise": GaussianNoiseMask,
     "lime": CaptumExplainer,
@@ -32,7 +33,7 @@ def build_explainer(model, name, params, device="cpu"):
         )
 
     explainer_class = EXPLAINER_REGISTRY[name]
-    if name in ["random", "gaussian_noise", "affinity"]:
+    if name in ["random", "gaussian_noise", "affinity", "masked_affinity"]:
         return explainer_class(model, **params)
 
     return explainer_class(model=model, name=name, **params).to(device)

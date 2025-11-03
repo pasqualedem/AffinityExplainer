@@ -89,11 +89,12 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, use_masks=False):
         self.model = model
         self.aggregation_method = aggregation_method
         self.use_softmax = use_softmax
-        
+        self.use_masks = use_masks
+
         if isinstance(explanation_size, int):
             explanation_size = (explanation_size, explanation_size)
             
@@ -173,7 +174,7 @@ class AffinityExplainer:
             support_mask = resize(
                 mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST
             ).float()
-            support_mask = rearrange(support_mask, "n h w -> h (n w)")
+            support_mask = rearrange(support_mask, "n h w -> 1 n h w")
             support_mask = 2 * support_mask - 1
 
             level_contributions = []
@@ -231,11 +232,17 @@ class AffinityExplainer:
                 level_contribution = rearrange(
                     level_contribution, "(b n) h w -> b n h w", n=class_shots
                 )
+
+                if self.use_masks:
+                    level_support_mask =  resize(
+                        mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST
+                    ).float()
+                    level_contribution = level_contribution * level_support_mask
+
                 level_contribution = level_contribution / (
                     level_contribution.sum(dim=(-1, -2, -3), keepdim=True) + 1e-6
                 )
                 level_contributions.append(level_contribution)
-                # level_predictions.append(level_prediction)
 
             contrib_seq = torch.stack(level_contributions, dim=1)  # B C N H W
 
@@ -276,3 +283,8 @@ class AffinityExplainer:
             explanations.append(weighted_contrib)
             
         return explanations
+    
+    
+class MaskedAffinityExplainer(AffinityExplainer):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True):
+        super().__init__(model, aggregation_method, explanation_size, use_softmax, use_masks=True)
