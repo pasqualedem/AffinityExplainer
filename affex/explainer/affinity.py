@@ -90,7 +90,7 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, masking=False, mask_blur_kernel_size=21, mask_blur_sigma=5):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, masking=False, mask_blur_kernel_size=31, mask_blur_sigma=50):
         self.model = model
         self.aggregation_method = aggregation_method
         self.use_softmax = use_softmax
@@ -292,10 +292,10 @@ class AffinityExplainer:
     
     
 class MaskedAffinityExplainer(AffinityExplainer):
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, mask_blur_kernel_size=21, mask_blur_sigma=5):
-        super().__init__(model, aggregation_method, explanation_size, use_softmax, masking=True, mask_blur_kernel_size=mask_blur_kernel_size, mask_blur_sigma=mask_blur_sigma)
-        
-        
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs, masking=True)
+
+
 class SignedAffinityExplainer(AffinityExplainer):
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, mask_blur_kernel_size=21, mask_blur_sigma=5):
-        super().__init__(model, aggregation_method, explanation_size, use_softmax, masking="sign", mask_blur_kernel_size=mask_blur_kernel_size, mask_blur_sigma=mask_blur_sigma)
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs, masking="sign")
