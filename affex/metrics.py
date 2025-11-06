@@ -7,9 +7,6 @@ from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
 from torchmetrics import Metric
 from torchmetrics.classification import MulticlassJaccardIndex
-from skimage.segmentation import slic
-
-from captum.metrics import infidelity
 
 from affex.data.utils import BatchKeys
 from affex.utils.utils import ResultDict, to_device
@@ -446,92 +443,3 @@ class FSSCausalMetric(Metric):
         self.results = []
         self.mid_statuses = []
         self.computed_n_steps = None
-
-
-def perturb_images(inputs):
-    num_segments = 80
-    compactness = 10
-    r"""Perturb images by random deactivation of superpixels."""
-    B, M, C, H, W = inputs.shape
-    assert B == 1, "Only support batch size of 1 for now"
-    
-    inputs = inputs[0]  # Take the first batch element
-    perturbed_inputs = torch.zeros_like(inputs)
-    noise = torch.zeros_like(inputs)
-    
-    for i in range(M):
-        img_np = inputs[i].detach().cpu().permute(1, 2, 0).numpy()
-        segments = slic(
-            img_np, n_segments=num_segments, compactness=compactness, start_label=0
-        )
-        # Randomly choose some superpixels to perturb
-        num_perturb = max(1, int(0.1 * num_segments))
-        perturb_segments = np.random.choice(
-            np.arange(num_segments), size=num_perturb, replace=False
-        )
-        mask = np.ones(segments.shape, dtype=bool)
-        for seg in perturb_segments:
-            mask[segments == seg] = False
-        mask = torch.from_numpy(mask).to(inputs.device).unsqueeze(0)
-        perturbed_img = inputs[i] * mask
-        noise[i] = inputs[i] - perturbed_img
-        perturbed_inputs[i] = perturbed_img
-
-    return noise.unsqueeze(0), perturbed_inputs.unsqueeze(0)
-
-
-class FSSInfidelity(Metric):
-    def __init__(self, model, n_perturb_samples=10, perturb_fraction=0.1, max_examples_per_batch=1):
-        super().__init__()
-        self.model = model
-        self.n_perturb_samples = n_perturb_samples
-        self.max_examples_per_batch = max_examples_per_batch
-        self.infidelities = []
-
-    def update(self, input_dict, explanation, explanation_mask, gt):
-        r"""Update metric with new batch of images.
-
-        Args:
-            input_dict (dict): dictionary containing image tensor, image masks
-            exp_batch (np.ndarray): saliency map over the support iamges
-            explanation_mask (torch.tensor): mask over the query image
-        """
-        
-        images = input_dict[BatchKeys.IMAGES][:, 1:] # Only support images
-        # Repeat explanation across channels
-        explanation = repeat(
-            explanation, "B M H W -> B M C H W", C=images.shape[2]
-        )
-        B, M, C, H, W = images.shape
-        device = images.device
-        
-        def forward_func(x):
-            curr_dict = {
-                **input_dict,
-                BatchKeys.IMAGES: torch.cat([input_dict[BatchKeys.IMAGES][:, 0:1], x], dim=1)
-            }
-            result = self.model(curr_dict, postprocess=False)
-            result = result[ResultDict.LOGITS][:, :, explanation_mask]
-            result = F.softmax(result, dim=1).mean(dim=-1)  # Reduce over the selected pixels
-            return result
-
-        infidelity_score = infidelity(
-            forward_func=forward_func,
-            perturb_func=perturb_images,
-            inputs=images,
-            attributions=explanation,
-            n_perturb_samples=self.n_perturb_samples,
-            max_examples_per_batch=self.max_examples_per_batch,
-        )
-        self.infidelities.append(infidelity_score.cpu().numpy())
-
-    def compute(self):
-        r"""Compute final infidelity."""
-        if self.infidelities is None or len(self.infidelities) == 0:
-            raise ValueError("No infidelities to compute.")
-        infidelities = np.concatenate(self.infidelities, axis=0)
-        return {"infidelity": np.mean(infidelities), "all": infidelities}
-
-    def reset(self):
-        r"""Reset the metric."""
-        self.infidelities = []

@@ -1,22 +1,26 @@
-grid: Infidelity
+grid: AblationBlur
 
 parameters:
   model: [dcama]
   explainer:
-    name: [random, affinity, masked_affinity, gaussian_noise, saliency, integrated_gradients]
+    name: [signed_affinity]
+    # mask_blur_kernel_size: [21, 31, 51, 71, 101]
+    # mask_blur_sigma: [5, 10, 15, 20, 30, 50]
 
   explanation_masking: [logits]
   # metric_masking: [all]
-  log_frequency: [False]
-  # Metrics to compute
+  log_frequency: [50]
   disable_dauc: [True]
-  disable_iauc: [True]
-  infidelity: [True]
   
   metric:
-    n_perturb_samples: [10, 50]
-    slic_segments: [80, 160]
+    n_steps: [1]
+    substrate_fn: [zero]
+    percentage: [0.01]
+    measure: [miou]
+    loss: [True]
+    skip_empty: [True]
 
+    
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
       val_pascal5i_N1K1_100:

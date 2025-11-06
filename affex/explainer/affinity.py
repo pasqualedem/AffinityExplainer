@@ -3,6 +3,7 @@ from einops import rearrange, repeat
 import torch.nn.functional as F
 from torchvision.transforms import functional as TvT
 from torchvision.transforms.functional import resize
+from torchvision import transforms as T
 
 from ..data.utils import BatchKeys, min_max_scale
 from ..models.dcama import DCAMAMultiClass
@@ -89,11 +90,12 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, use_masks=False):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, masking=False, mask_blur_kernel_size=21, mask_blur_sigma=5):
         self.model = model
         self.aggregation_method = aggregation_method
         self.use_softmax = use_softmax
-        self.use_masks = use_masks
+        self.masking = masking
+        self.blur = T.GaussianBlur(kernel_size=mask_blur_kernel_size, sigma=mask_blur_sigma)
 
         if isinstance(explanation_size, int):
             explanation_size = (explanation_size, explanation_size)
@@ -171,11 +173,9 @@ class AffinityExplainer:
             mask = masks[:, :, chosen_class + 1, ::][class_examples]
             class_shots = mask.shape[0]
 
-            support_mask = resize(
+            mask = resize(
                 mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST
             ).float()
-            support_mask = rearrange(support_mask, "n h w -> 1 n h w")
-            support_mask = 2 * support_mask - 1
 
             level_contributions = []
             level_predictions = []
@@ -233,11 +233,11 @@ class AffinityExplainer:
                     level_contribution, "(b n) h w -> b n h w", n=class_shots
                 )
 
-                if self.use_masks:
-                    level_support_mask =  resize(
-                        mask, explanation_size, interpolation=TvT.InterpolationMode.NEAREST
-                    ).float()
-                    level_contribution = level_contribution * level_support_mask
+                # if self.masking:
+                #     level_support_mask = self.blur(mask)
+                #     if self.masking == "sign":
+                #         level_support_mask = 2 * level_support_mask - 1
+                #     level_contribution = level_contribution * level_support_mask
 
                 level_contribution = level_contribution / (
                     level_contribution.sum(dim=(-1, -2, -3), keepdim=True) + 1e-6
@@ -278,7 +278,13 @@ class AffinityExplainer:
                     interpolation=TvT.InterpolationMode.BILINEAR,
                     antialias=False,
                 )
-            
+                
+            if self.masking:
+                curr_mask = self.blur(mask)
+                if self.masking == "sign":
+                    curr_mask = 2 * curr_mask - 1
+                weighted_contrib = min_max_scale(weighted_contrib * curr_mask)
+
             # explanations.append((mean_contrib, weighted_contrib, contrib_seq, level_predictions, support_mask, class_shots))
             explanations.append(weighted_contrib)
             
@@ -286,5 +292,10 @@ class AffinityExplainer:
     
     
 class MaskedAffinityExplainer(AffinityExplainer):
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True):
-        super().__init__(model, aggregation_method, explanation_size, use_softmax, use_masks=True)
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, mask_blur_kernel_size=21, mask_blur_sigma=5):
+        super().__init__(model, aggregation_method, explanation_size, use_softmax, masking=True, mask_blur_kernel_size=mask_blur_kernel_size, mask_blur_sigma=mask_blur_sigma)
+        
+        
+class SignedAffinityExplainer(AffinityExplainer):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, mask_blur_kernel_size=21, mask_blur_sigma=5):
+        super().__init__(model, aggregation_method, explanation_size, use_softmax, masking="sign", mask_blur_kernel_size=mask_blur_kernel_size, mask_blur_sigma=mask_blur_sigma)

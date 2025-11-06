@@ -12,6 +12,8 @@ from tqdm import tqdm
 import yaml
 import lovely_tensors as lt
 
+from .infidelity import FSSInfidelity
+
 from .explainer.affinity import get_explanation_mask
 from .utils.segmentation import create_rgb_segmentation, unnormalize
 lt.monkey_patch()
@@ -19,7 +21,7 @@ lt.monkey_patch()
 from .data import get_dataloaders
 from .data.utils import BatchKeys
 from .explainer import build_explainer
-from .metrics import FSSCausalMetric, FSSInfidelity
+from .metrics import FSSCausalMetric
 from .models import build_model, build_model_preconfigured
 from .substitution import Substitutor
 from .utils.logger import get_logger
