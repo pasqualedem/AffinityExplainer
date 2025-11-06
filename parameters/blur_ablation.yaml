@@ -4,8 +4,8 @@ parameters:
   model: [dcama]
   explainer:
     name: [signed_affinity]
-    # mask_blur_kernel_size: [21, 31, 51, 71, 101]
-    # mask_blur_sigma: [5, 10, 15, 20, 30, 50]
+    mask_blur_kernel_size: [21, 31, 51, 71, 101]
+    mask_blur_sigma: [5, 10, 15, 20, 30, 50]
 
   explanation_masking: [logits]
   # metric_masking: [all]
