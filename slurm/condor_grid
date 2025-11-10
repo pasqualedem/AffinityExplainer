@@ -9,6 +9,7 @@ executable = .venv/bin/python
 # The output of the remote machine running the job will be printed on
 output = grid.out
 error = grid.out
+log = grid.out
 
 request_cpus = 1
 request_memory = 8 GB
