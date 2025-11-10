@@ -25,5 +25,4 @@ def rename_coco20i_json(instances_path: str):
 if __name__ == '__main__':
     args = parse_args()
     assert args.instances_path.endswith('.json'), "instances must be a json file."
-    assert args.out_path.endswith('.json'), "data serialization supported just for json files."
     rename_coco20i_json(args.instances_path)
