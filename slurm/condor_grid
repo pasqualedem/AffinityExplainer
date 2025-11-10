@@ -7,9 +7,10 @@ universe = vanilla
 executable = .venv/bin/python
 
 # The output of the remote machine running the job will be printed on
+output = grid.out
+error = grid.out
 
-request_cpus = 8
-request_gpus = 1
-request_memory = 48 GB
+request_cpus = 1
+request_memory = 8 GB
 rank = Memory
 queue
