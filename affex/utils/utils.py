@@ -4,26 +4,11 @@ import importlib
 from datetime import datetime
 from inspect import signature
 import time
-import torch
 import yaml
 from io import StringIO
 import collections.abc
 from typing import Mapping
 import yaml
-from safetensors import safe_open
-from safetensors.torch import save_file
-from copy import deepcopy
-
-# from label_anything.models.lam import Lam 
-
-
-FLOAT_PRECISIONS = {
-    "fp32": torch.float32,
-    "fp64": torch.float64,
-    "fp16": torch.float16,
-    "bf16": torch.bfloat16,
-}
-
 
 def strip_wandb_keys_recursive(data):
     
@@ -83,23 +68,6 @@ def write_yaml(data: dict, file_path: str = None, file=None):
         print(f"Error parsing YAML file: {e}")
         
 
-def torch_dict_load(file_path):
-    if file_path.endswith(".pth") or file_path.endswith(".pt") or file_path.endswith(".bin"):
-        return torch.load(file_path)
-    if file_path.endswith(".safetensors"):
-        with safe_open(file_path, framework="pt") as f:
-            d = {k: f.get_tensor(k) for k in f.keys()}
-        return d
-    raise ValueError("File extension not supported")
-        
-def torch_dict_save(data, file_path):
-    if file_path.endswith(".pth") or file_path.endswith(".pt") or file_path.endswith(".bin"):
-        torch.save(data, file_path)
-    elif file_path.endswith(".safetensors"):
-        save_file(data, file_path)
-    else:
-        raise ValueError("File extension not supported")
-   
 def state_dict_keys_check(res):
     if missing_keys := [
         k for k in res.missing_keys if "image_encoder" not in k
@@ -133,30 +101,6 @@ def load_state_dict(model, state_dict, strict=True, ignore_encoder_missing_keys=
                 state_dict_keys_check(res)
     print("State_dict loaded successfully")
     return model
-
-
-# def unwrap_model_from_parallel(model, return_was_wrapped=False):
-#     """
-#     Unwrap a model from a DataParallel or DistributedDataParallel wrapper
-#     :param model: the model
-#     :return: the unwrapped model
-#     """
-#     if isinstance(
-#         model,
-#         (
-#             torch.nn.DataParallel,
-#             torch.nn.parallel.DistributedDataParallel,
-#             Lam,
-#         ),
-#     ):
-#         if return_was_wrapped:
-#             return model.module, True
-#         return model.module
-#     else:
-#         if return_was_wrapped:
-#             return model, False
-#         return model
-
 
 def get_module_class_from_path(path):
     path = os.path.normpath(path)
@@ -204,21 +148,6 @@ def instantiate_class(name, params):
     ):
         return imp_cls(params)
     return imp_cls(**params)
-
-
-def substitute_values(x: torch.Tensor, values, unique=None):
-    """
-    Substitute values in a tensor with the given values
-    :param x: the tensor
-    :param unique: the unique values to substitute
-    :param values: the values to substitute with
-    :return: the tensor with the values substituted
-    """
-    if unique is None:
-        unique = x.unique()
-    lt = torch.full((unique.max() + 1,), -1, dtype=values.dtype, device=x.device)
-    lt[unique] = values
-    return lt[x]
 
 
 # def load_yaml(path, return_string=False):
@@ -378,33 +307,6 @@ class EasyDict(dict):
         return super(EasyDict, self).pop(k, d)
 
 
-def to_device(batch, device):
-    if isinstance(batch, (list, tuple)):
-        return [to_device(b, device) for b in batch]
-    if isinstance(batch, dict):
-        return {k: to_device(v, device) for k, v in batch.items()}
-    if isinstance(batch, torch.Tensor):
-        return batch.to(device)
-    return batch
-
-
-def linearize_metrics(metrics, id2class=None):
-    linearized = {}
-    for k, v in metrics.items():
-        if isinstance(v, dict):
-            linearized.update(linearize_metrics(v, id2class))
-        if isinstance(v, torch.Tensor):
-            # Check if it has a single item
-            if len(v.shape) == 0:
-                linearized[k] = v.item()
-            else:
-                for i, elem in enumerate(v):
-                    class_name = id2class[i] if id2class is not None else f"class_{i}"
-                    linearized[f"{k}_{class_name}"] = elem
-                linearized[k] = v.mean().item()
-                linearized[f"{k}_fg"] = v[1:].mean().item()
-    return linearized
-
 def hierarchical_uniform_sampling(N, M):
     selected_numbers = [0, N]  # Start with the base case M=2
     
@@ -429,10 +331,6 @@ def hierarchical_uniform_sampling(N, M):
         selected_numbers.sort()
     
     return selected_numbers[:M]  # Ensure exactly M numbers
-
-
-def clone_input_dict(input_dict):
-    return {k: v.clone() if isinstance(v, torch.Tensor) else deepcopy(v) for k, v in input_dict.items()}
 
 
 class PrintLogger:

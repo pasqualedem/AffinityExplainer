@@ -9,7 +9,8 @@ from torchmetrics import Metric
 from torchmetrics.classification import MulticlassJaccardIndex
 
 from affex.data.utils import BatchKeys
-from affex.utils.utils import ResultDict, to_device
+from affex.utils.torch import to_device
+from affex.utils.utils import ResultDict
 
 
 def gkern(klen, nsig):

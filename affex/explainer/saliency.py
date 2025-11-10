@@ -1,8 +1,10 @@
 from einops import rearrange
 import numpy as np
 
+from ..utils.torch import clone_input_dict
+
 from ..data.utils import BatchKeys, min_max_scale
-from ..utils.utils import ResultDict, clone_input_dict
+from ..utils.utils import ResultDict
 
 from .blur_ig import FSSBlurIG
 from .xrai import FSSXRAI

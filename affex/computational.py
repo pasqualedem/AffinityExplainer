@@ -23,7 +23,7 @@ from affex.explainer import build_explainer
 from affex.models import build_model_preconfigured
 from affex.substitution import Substitutor
 from affex.utils.logger import get_logger
-from affex.utils.utils import to_device
+from affex.utils.torch import to_device
 
 
 def sync_cuda():

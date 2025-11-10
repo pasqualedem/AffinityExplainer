@@ -12,6 +12,8 @@ from tqdm import tqdm
 import yaml
 import lovely_tensors as lt
 
+from .utils.torch import to_device
+
 from .infidelity import FSSInfidelity
 
 from .explainer.affinity import get_explanation_mask
@@ -25,7 +27,7 @@ from .metrics import FSSCausalMetric
 from .models import build_model, build_model_preconfigured
 from .substitution import Substitutor
 from .utils.logger import get_logger
-from .utils.utils import ResultDict, to_device
+from .utils.utils import ResultDict
 from .cache import get_cached_model_output, get_cached_attribution, CACHE_FREE_ALGOS
 
 from torchmetrics import MetricCollection
