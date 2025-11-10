@@ -23,12 +23,14 @@ class ParallelRun:
         logger=None,
         run_name=None,
         slurm_script=None,
+        scheduler="slurm",
     ):
         self.params = params
         self.multi_gpu = multi_gpu
         self.logger = logger or PrintLogger()
         self.run_name = run_name
         self.slurm_script = slurm_script or "slurm/launch_run"
+        self.scheduler = scheduler
         if "." not in sys.path:
             sys.path.extend(".")
 
@@ -39,6 +41,8 @@ class ParallelRun:
             self.launch_single_task(only_create, script_args)
 
     def launch_multi_task(self, only_create=False, script_args=[]):
+        if self.scheduler != "slurm":
+            raise NotImplementedError("Multi task launching is only implemented for slurm scheduler")
         self.logger.info(f"Running {len(self.params)} tasks in parallel")
         out_files = [f"{self.run_name[i]}/log.{self.out_extension}" for i in range(len(self.params))]
         
@@ -117,6 +121,24 @@ class ParallelRun:
         slurm_script = (
             self.slurm_multi_gpu_script if self.multi_gpu else self.slurm_script
         )
+        
+        if self.scheduler == "slurm":
+            self.launch_slurm(
+                params, run_name, out_file, param_file, only_create, script_args
+            )
+        elif self.scheduler == "condor":
+            self.launch_condor(
+                params, run_name, out_file, param_file, only_create, script_args
+            )
+        else:
+            raise ValueError(f"Scheduler {self.scheduler} not recognized")
+
+    def launch_slurm(
+        self, params, run_name, out_file, param_file, only_create=False, script_args=[]
+    ):
+        slurm_script = (
+            self.slurm_multi_gpu_script if self.multi_gpu else self.slurm_script
+        )
         command = [
             self.slurm_command,
             self.slurm_stdout,
@@ -128,6 +150,30 @@ class ParallelRun:
             self.slurm_script_run_name_parameter + run_name,
             *script_args,
         ]
+
+        if only_create:
+            self.logger.info(f"Creating command: {' '.join(command)}")
+        else:
+            self.logger.info(f"Launching command: {' '.join(command)}")
+            subprocess.run(command)
+
+    def launch_condor(
+        self, params, run_name, out_file, param_file, only_create=False, script_args=[]
+    ):
+        if self.multi_gpu:
+            raise NotImplementedError("Multi GPU not implemented for condor scheduler")
+        
+        slurm_script = self.slurm_script
+        
+        command = [
+            "condor_submit",
+            f"output={out_file}",
+            f"error={out_file}",
+            f"log={out_file}",
+            f"arguments='main.py run {self.slurm_script_first_parameter}{param_file} {self.slurm_script_run_name_parameter}{run_name} {' '.join(script_args)}'",
+            slurm_script,
+        ]
+        
         if only_create:
             self.logger.info(f"Creating command: {' '.join(command)}")
         else:

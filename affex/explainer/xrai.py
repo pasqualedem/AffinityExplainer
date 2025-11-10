@@ -158,7 +158,7 @@ class FSSXRAI(XRAI):
         else:
             segs = [
                 _get_segments_felzenszwalb(x_value[i].transpose(1, 2, 0))
-                for i in range(x_value.shape[0])
+                for i in range(1, x_value.shape[0])
             ]
 
         support_images = attr.shape[0] - 1

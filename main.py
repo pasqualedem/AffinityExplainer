@@ -28,6 +28,14 @@ FUNCTION_SLURMS = {
     "evaluate": "slurm/launch_run",
     "computational": "slurm/launch_computational",
 }
+FUNCTIONS_CONDOR = {
+    "evaluate": "slurm/condor",
+    "computational": "slurm/condor",
+}
+SCHEDULERS = {
+    "slurm": FUNCTION_SLURMS,
+    "condor": FUNCTIONS_CONDOR,
+}
 
 
 @click.group()
@@ -96,11 +104,16 @@ def manage_multiprocess_run(run_parameters, run_name, logger, job_parallelism=No
     type=int,
     help="If --parallel is provided, and dataloader.num_processes is provided in the parameters, this will set the number of processes to use in a single job, should be divisor of dataloader.num_processes",
 )
-def grid(parameters, parallel, only_create=False, function="evaluate", job_parallelism=None):
+@click.option(
+    "--scheduler",
+    default="slurm",
+    help="Scheduler to use, either 'slurm' or 'condor'",
+)
+def grid(parameters, parallel, only_create=False, function="evaluate", job_parallelism=None, scheduler="slurm"):
     assert function in FUNCTIONS, f"Function {function} not recognized, available functions: {list(FUNCTIONS.keys())}"
     
     run_function = FUNCTIONS[function]
-    slurm_script = FUNCTION_SLURMS[function]
+    slurm_script = SCHEDULERS[scheduler][function]
     
     assert os.path.exists(slurm_script), f"Slurm script {slurm_script} does not exist"
     
@@ -139,6 +152,7 @@ def grid(parameters, parallel, only_create=False, function="evaluate", job_paral
                     logger=grid_logger,
                     run_name=subrun_name,
                     slurm_script=slurm_script,
+                    scheduler=scheduler,
                 )
                 run.launch(
                     only_create=only_create,
