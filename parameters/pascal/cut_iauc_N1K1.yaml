@@ -1,9 +1,25 @@
 grid: CUTIAUC_Pascal_N1K1
 
 parameters:
-  model: [dcama, dmtnet]
+# N1K1
+
+  model: [dcama]
   explainer:
-    name: [masked_affinity, signed_affinity]
+    name:
+      [
+        random,
+        gaussian_noise,
+        saliency,
+        integrated_gradients,
+        guided_ig,
+        blur_ig,
+        xrai,
+        deep_lift,
+        lime,
+        affinity,
+        masked_affinity,
+        signed_affinity,
+      ]
 
   explanation_masking: [logits]
   # metric_masking: [all]
@@ -40,8 +56,20 @@ parameters:
     batch_size: [1]
     csv_folder: [data_csv]
 
-# other_grids:
-#   -
-#     model: [dmtnet]
-#     explainer:
-#       name: [affinity, random, saliency, integrated_gradients, deep_lift, blur_ig, gaussian_noise, lime, xrai]
+other_grids:
+  - model: [dmtnet]
+    explainer:
+      name:
+        [
+          random,
+          gaussian_noise,
+          saliency,
+          integrated_gradients,
+          blur_ig,
+          deep_lift,
+          xrai,
+          lime,
+          affinity,
+          masked_affinity,
+          signed_affinity,
+        ]

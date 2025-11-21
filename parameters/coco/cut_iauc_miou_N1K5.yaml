@@ -1,17 +1,35 @@
-grid: IAUCDAUCMioU_Coco
+grid: CUTIAUCMioU_Coco_N1K5
 
 parameters:
   model: [dcama]
   explainer:
-    name: [masked_affinity]
+    name:
+      [
+        random,
+        gaussian_noise,
+        saliency,
+        integrated_gradients,
+        guided_ig,
+        blur_ig,
+        xrai,
+        deep_lift,
+        lime,
+        affinity,
+        masked_affinity,
+        signed_affinity,
+      ]
 
   explanation_masking: [logits]
+  # metric_masking: [all]
   log_frequency: [50]
+  disable_dauc: [True]
 
   metric:
-    n_steps: [75]
+    n_steps: [1]
     substrate_fn: [zero]
+    percentage: [0.01, 0.05]
     measure: [miou]
+    loss: [True]
     skip_empty: [True]
 
   dataset: # parameters depending on the class you defined for the dataset
@@ -38,12 +56,18 @@ parameters:
     csv_folder: [data_csv]
 
 other_grids:
-  -
-    model: [dmtnet]
+  - model: [dmtnet]
     explainer:
-      name: [affinity, random, saliency, integrated_gradients]
-    dataloader:
-      num_workers: [16]
-      batch_size: [1]
-      csv_folder: [data_csv]
-      num_processes: [10]
+      name:
+        [
+          random,
+          gaussian_noise,
+          saliency,
+          integrated_gradients,
+          blur_ig,
+          xrai,
+          lime,
+          affinity,
+          masked_affinity,
+          signed_affinity,
+        ]
