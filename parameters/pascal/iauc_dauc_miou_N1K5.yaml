@@ -1,4 +1,4 @@
-grid: IAUCDAUCMioU_Pascal
+grid: IAUCDAUCMioU_Pascal_N1K5
 
 parameters:
   model: [dcama]
