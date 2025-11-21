@@ -17,3 +17,4 @@ python main.py grid --parameters parameters/feature_ablation.yaml
 python main.py grid --parameters parameters/blur_ablation.yaml
 python main.py grid --parameters parameters/ablation/dcama_ablation.yaml
 python main.py grid --parameters parameters/ablation/iauc_size.yaml
+python main.py grid --parameters parameters/ablation/lime_search.yaml
