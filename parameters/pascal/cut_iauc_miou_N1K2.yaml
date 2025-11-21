@@ -1,28 +1,32 @@
-grid: DMTNet
+grid: CUTIAUCMioU_Pascal
 
 parameters:
-  model: [dmtnet]
+  model: [dcama, dmtnet]
   explainer:
-    name: [affinity, integrated_gradients, saliency, random]
+    name: [affinity, saliency, random, integrated_gradients, deep_lift]
 
-  explanation_masking: [ground_truth, logits]
+  explanation_masking: [logits]
+  # metric_masking: [all]
   log_frequency: [50]
-
+  disable_dauc: [True]
+  
   metric:
-    step: [100000]
+    n_steps: [1]
     substrate_fn: [zero]
-
-  num_processes: [5]
+    percentage: [0.01, 0.05]
+    measure: [miou]
+    loss: [True]
+    skip_empty: [True]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
-      val_pascal5i_N1K5:
+      val_pascal5i_N1K2:
         name: [pascal]
         data_dir: &instance_dir [data/pascal]
         split: ["val"]
         val_fold_idx: [null]
         n_folds: [4]
-        n_shots: [5]
+        n_shots: [2]
         n_ways: [1]
         do_subsample: [False]
         val_num_samples: [1000]
@@ -34,3 +38,4 @@ parameters:
   dataloader:
     num_workers: [16]
     batch_size: [1]
+    csv_folder: [data_csv]

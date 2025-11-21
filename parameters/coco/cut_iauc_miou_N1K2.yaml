@@ -1,30 +1,31 @@
-grid: CUTIAUC_Coco
+grid: CUTIAUCMioU_Coco
 
 parameters:
   model: [dcama, dmtnet]
   explainer:
-    name: [masked_affinity, signed_affinity]
+    name: [affinity, saliency, integrated_gradients, deep_lift, random]
 
   explanation_masking: [logits]
   # metric_masking: [all]
   log_frequency: [50]
   disable_dauc: [True]
-
-  device: [cuda:0]
   
   metric:
-    n_steps: [5]
+    n_steps: [1]
     substrate_fn: [zero]
-    percentage: [0.01]
+    percentage: [0.01, 0.05]
+    measure: [miou]
+    loss: [True]
+    skip_empty: [True]
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
-      val_coco20i_N1K5:
+      val_coco20i_N1K2:
         name: [coco]
         instances_path: [data/coco/annotations/instances_val2014.json]
         all_example_categories: [False]
         img_dir: [data/coco/train_val_2017]
-        n_shots: [5]
+        n_shots: [2]
         n_ways: [1]
         do_subsample: [False]
         add_box_noise: [False]
@@ -39,9 +40,3 @@ parameters:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
-
-other_grids:
-  # -
-  #   model: [dmtnet]
-  #   explainer:
-  #     name: [affinity, random, saliency, integrated_gradients]

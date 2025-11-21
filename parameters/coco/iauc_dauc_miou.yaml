@@ -3,7 +3,7 @@ grid: IAUCDAUCMioU_Coco
 parameters:
   model: [dcama]
   explainer:
-    name: [affinity, saliency, random, integrated_gradients, deep_lift]
+    name: [masked_affinity]
 
   explanation_masking: [logits]
   log_frequency: [50]

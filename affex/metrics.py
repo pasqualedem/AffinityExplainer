@@ -73,6 +73,7 @@ class FSSCausalMetric(Metric):
         loss=False,
         measure="logits",
         skip_empty=False,
+        n_mid_statuses=30,
     ):
         r"""Create deletion/insertion metric instance.
 
@@ -112,6 +113,7 @@ class FSSCausalMetric(Metric):
         self.loss = loss
         self.measure = measure
         self.skip_empty = skip_empty
+        self.n_mid_statuses = n_mid_statuses
 
         if self.percentage is not None:
             assert 0 < self.percentage < 1.0, "percentage must be in (0, 1)"
@@ -277,7 +279,7 @@ class FSSCausalMetric(Metric):
 
         self.set_steps(MHW, ordered_saliency)
         self.mid_status_frequency = np.unique(
-            np.round(np.logspace(0, np.log10(self.computed_n_steps), num=30)).astype(
+            np.round(np.logspace(0, np.log10(self.computed_n_steps), num=self.n_mid_statuses)).astype(
                 int
             )
         ).tolist()

@@ -1,4 +1,4 @@
-grid: CUTIAUC_Pascal_N1K1
+grid: CUTIAUC_Coco_N1K1
 
 parameters:
   model: [dcama, dmtnet]
@@ -10,7 +10,7 @@ parameters:
   log_frequency: [50]
   disable_dauc: [True]
 
-  device: [cuda:1]
+  device: [cuda:0]
   cache: [False]
   
   metric:
@@ -20,28 +20,29 @@ parameters:
 
   dataset: # parameters depending on the class you defined for the dataset
     datasets:
-      val_pascal5i_N1K1:
-        name: [pascal]
-        data_dir: &instance_dir [data/pascal]
-        split: ["val"]
-        val_fold_idx: [null]
-        n_folds: [4]
+      val_coco20i_N1K1:
+        name: [coco]
+        instances_path: [data/coco/annotations/instances_val2014.json]
+        all_example_categories: [False]
+        img_dir: [data/coco/train_val_2017]
         n_shots: [1]
         n_ways: [1]
         do_subsample: [False]
-        val_num_samples: [1000]
-        maintain_gt_shape: [False]
+        add_box_noise: [False]
+        val_fold_idx: [null]
+        n_folds: [null]
+        split: ["val"]
     common:
       remove_small_annotations: [True]
-      ignore_borders: [True]
       custom_preprocess: [False]
+      maintain_gt_shape: [False]
   dataloader:
     num_workers: [16]
     batch_size: [1]
     csv_folder: [data_csv]
 
-# other_grids:
-#   -
-#     model: [dmtnet]
-#     explainer:
-#       name: [affinity, random, saliency, integrated_gradients, deep_lift, blur_ig, gaussian_noise, lime, xrai]
+other_grids:
+  # -
+  #   model: [dmtnet]
+  #   explainer:
+  #     name: [affinity, random, saliency, integrated_gradients]
