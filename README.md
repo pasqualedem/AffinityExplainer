@@ -11,7 +11,7 @@ AffinityExplainer is a framework to interpret matching-based few-shot semantic s
 To run a quick demo of AffinityExplainer, execute the following command:
 
 ```bash
-uv --from https://github.com/pasqualedem/AffinityExplainer app
+uvx --from https://github.com/pasqualedem/AffinityExplainer app
 ```
 > **💡 You just need [uv](https://docs.astral.sh/uv/) to run this command **
 
