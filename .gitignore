@@ -1,0 +1,17 @@
+/affex/
+/.vscode/
+__pycache__/
+/out/
+/checkpoints/
+/.venv/
+/data/
+/artifacts/
+/imgs/
+/notebooks/
+/wandb/
+/cache/
+/data/
+/data
+/cache
+static/images/dauc/
+static/images/iauc/

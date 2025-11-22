@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="description"
+        content="Affinity Explainer (AffEx) is a framework for interpreting matching-based few-shot semantic segmentation models.">
+    <meta name="keywords" content="Few-Shot Learning, Semantic Segmentation, XAI, Interpretability, AffEx">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Affinity Explainer: Interpretable FSS</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+
+        gtag('js', new Date());
+
+        gtag('config', 'G-PYVRSFMDRL');
+    </script>
+
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+    <link rel="stylesheet" href="./static/css/bulma.min.css">
+    <link rel="stylesheet" href="./static/css/swiper.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="./static/css/index.css">
+    <link rel="icon" href="./favicon.svg">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="./static/js/fontawesome.all.min.js"></script>
+    <script src="./static/js/bulma-carousel.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./static/js/interactive_plot.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+                <a class="navbar-item" href="https://nicolafan.github.io">
+                    <span class="icon">
+                        <i class="fas fa-home"></i>
+                    </span>
+                </a>
+
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        More Research
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="https://pasqualedem.github.io/">
+                            Pasquale De Marinis' Website
+                        </a>
+                        <a class="navbar-item" href="https://sites.google.com/site/cilabuniba/home">
+                            CILab's Website
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-body">
+            <div class="container is-max-desktop">
+                <div class="columns is-centered">
+                    <div class="column has-text-centered">
+                        <h1 class="title is-1 publication-title">Matching-Based Few-Shot Semantic Segmentation Models <br> Are Interpretable by Design</h1>
+                        <!-- <h2 class="title is-5 publication-title">CVPR 2026</h2> -->
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block">
+                                <a href="https://pasqualedem.github.io/">Pasquale De Marinis</a><sup>1</sup>,</span>
+                            <span class="author-block">
+                                <a href="#">Uzay Kaymak</a><sup>2,3</sup>,</span>
+                            <span class="author-block">
+                                <a href="#">Rogier Brussee</a><sup>2</sup>,
+                            </span>
+                            <span class="author-block">
+                                <a href="https://www.gennarovessio.com//">Gennaro Vessio</a><sup>1</sup>,
+                            </span>
+                            <span class="author-block">
+                                <a href="https://sites.google.com/site/cilabuniba/people/giovanna-castellano">Giovanna
+                                    Castellano</a><sup>1</sup>
+                            </span>
+                        </div>
+
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block"><sup>1</sup>University of Bari Aldo Moro,</span>
+                            <span class="author-block"><sup>2</sup>Jheronimus Academy of Data Science (JADS),</span>
+                            <span class="author-block"><sup>3</sup>Eindhoven University of Technology (TU/e)</span>
+                        </div>
+
+                        <div class="column has-text-centered">
+                            <div class="publication-links">
+                                <span class="link-block">
+                                    <a href="#"
+                                        class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </span>
+                                        <span>Paper</span>
+                                    </a>
+                                </span>
+                                <span class="link-block">
+                                    <a href="#"
+                                        class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon">
+                                            <i class="ai ai-arxiv"></i>
+                                        </span>
+                                        <span>arXiv</span>
+                                    </a>
+                                </span>
+                                <span class="link-block">
+                                    <a href="https://github.com/pasqualedem/"
+                                        class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon">
+                                            <i class="fab fa-github"></i>
+                                        </span>
+                                        <span>Code</span>
+                                    </a>
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero teaser">
+        <div class="container is-max-desktop">
+            <div class="hero-body">
+                <img id="teaser-img" src="./static/images/FSSAffex.svg" alt="Affinity Explainer Framework"
+                    style="width:100%; height:auto;" />
+                <h2 class="subtitle has-text-centered">
+                    <strong>Affinity Explainer (AffEx)</strong> computes attribution maps using the matching scores between query and support images in matching-based FSS models. It reveals the specific support regions that most influence the segmentation of the query.
+                </h2>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <h2 class="title is-3">Abstract</h2>
+                    <div class="content has-text-justified">
+                        <p>
+                            Explainable AI (XAI) has made significant progress in conventional vision tasks, yet interpretability in Few-Shot Learning (FSL)—and specifically Few-Shot Semantic Segmentation (FSS)—remains underexplored. Existing FSS models are primarily evaluated on accuracy, leaving their internal reasoning opaque. This ambiguity makes it difficult to diagnose failures or select optimal support examples.
+                        </p>
+                        <p>
+                            In this paper, we introduce <strong>Affinity Explainer (AffEx)</strong>, a framework designed to interpret matching-based FSS models. By leveraging the inherent matching mechanisms (similarity scores) of these architectures, AffEx derives contribution maps that highlight which support pixels most strongly influence the query prediction. We propose three variants: <em>Unmasked</em>, <em>Masked</em>, and <em>Signed AffEx</em>. 
+                        </p>
+                        <p>
+                            Furthermore, we extend the causal evaluation metrics <strong>Insertion/Deletion Area Under the Curve (IAUC/DAUC)</strong> to the FSS domain to rigorously quantify interpretability. Our extensive benchmark on COCO-20i and Pascal-5i demonstrates that AffEx provides actionable insights into model behavior and outperforms standard model-agnostic explanation methods.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            </div>
+    </section>
+
+    <section class="hero is-light is-small">
+        <div class="hero-body">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-full-width">
+                <h2 class="title is-3">Qualitative Results</h2><br>
+                <p>Visualizing attributions generated by AffEx compared to other methods (Saliency, Blur IG, XRAI).</p><br>
+            <div class="container">
+                <div class="swiper swiper-container">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
+                            <img src="./static/images/FSSAffex_examples_website_1.svg" alt="Qualitative Example 1" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                        </div>
+                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
+                            <img src="./static/images/FSSAffex_examples_website_2.svg" alt="Qualitative Example 2" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                        </div>
+                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
+                            <img src="./static/images/FSSAffex_examples_website_3.svg" alt="Qualitative Example 3" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                        </div>
+                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
+                            <img src="./static/images/FSSAffex_examples_website_4.svg" alt="Qualitative Example 4" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                        </div>
+                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
+                            <img src="./static/images/FSSAffex_examples_website_5.svg" alt="Qualitative Example 5" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                        </div>
+                    </div>
+                    <div class="swiper-pagination"></div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+            </div>
+        </div>
+        </div>
+            </div>
+            </div>
+            </div>
+    </section>
+
+    <section class="section">
+        <div class="container is-max-desktop">
+
+            <div class="columns is-centered">
+                <div class="column is-full-width">
+                    <h2 class="title is-3">Methodology</h2>
+
+                    <h3 class="title is-4">Affinity Explainer (AffEx)</h3>
+                    <div class="content has-text-justified">
+                        <p>
+                            AffEx operates by analyzing the matching scores computed between query and support features. We define an attribution function that maps these scores to spatial importance maps over the support images. 
+                        </p>
+                        <ul>
+                            <li><strong>Unmasked AffEx:</strong> Uses raw matching scores normalized via softmax to determine pixel-wise contribution.</li>
+                            <li><strong>Masked AffEx:</strong> Incorporates the support mask to constrain attributions to the object of interest, using Gaussian smoothing at boundaries.</li>
+                            <li><strong>Signed AffEx:</strong> Interprets background regions as having negative contributions, assigning negative values to non-object areas.</li>
+                        </ul>
+                        <p>
+                            The final map is obtained by aggregating attributions across network layers using <strong>Feature Ablation</strong> weights, ensuring that the most discriminative features have higher influence.
+                        </p>
+                    </div>
+                    <h3 class="title is-4">Causal Evaluation Metrics</h3>
+                    <div class="content has-text-justified">
+                        <p>
+                            To evaluate the faithfulness of our explanations, we extend <strong>Insertion AUC (IAUC)</strong> and <strong>Deletion AUC (DAUC)</strong> to FSS. 
+                        </p>
+                        <p>
+                            <strong>DAUC</strong> measures the drop in model performance (mIoU or Confidence) as we progressively remove the "most important" pixels from the support set. A good explanation method should cause a rapid drop. Conversely, <strong>IAUC</strong> measures performance gain as we introduce important pixels to an empty support set. We also introduce <strong>mIoULoss@p</strong>, which quantifies the accuracy loss when using only the top <em>p%</em> of relevant pixels.
+                        </p>
+                    </div>
+                    </div>
+            </div>
+            </div>
+    </section>
+
+<section class="section">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3 has-text-centered">Interactive Causal Analysis</h2>
+            <div class="content has-text-centered">
+                <p>
+                    Use the slider below to observe how progressively removing important pixels (DAUC) or adding them (IAUC) affects the support set and the model's prediction.
+                </p>
+            </div>
+
+            <div class="tabs is-centered is-toggle is-rounded">
+                <ul>
+                    <li class="is-active" id="tab-dauc" onclick="switchMetric('DAUC')">
+                        <a>
+                            <span class="icon is-small"><i class="fas fa-minus-circle"></i></span>
+                            <span>Deletion (DAUC)</span>
+                        </a>
+                    </li>
+                    <li id="tab-iauc" onclick="switchMetric('IAUC')">
+                        <a>
+                            <span class="icon is-small"><i class="fas fa-plus-circle"></i></span>
+                            <span>Insertion (IAUC)</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="columns is-vcentered">
+                <div class="column is-6">
+                    <div class="box has-text-centered" style="height: 100%;">
+                        <h4 class="title is-5">Query Prediction</h4>
+                        <figure class="image is-4by3">
+                            <img id="dynamic-query-img" src="./static/images/dauc/query_0.png" alt="Query Prediction">
+                        </figure>
+                    </div>
+                </div>
+
+                <div class="column is-6">
+                    <div class="box" style="height: 100%;">
+                        <canvas id="causalChart" style="max-height: 300px;"></canvas>
+                        <br>
+                        <label class="label has-text-centered">Perturbation Step: <span id="step-label">0%</span></label>
+                        <input id="step-slider" class="slider is-fullwidth is-large is-circle" step="10" min="0" max="100" value="0" type="range" oninput="updateVisualization(this.value)">
+                        <div class="columns is-mobile is-size-7 has-text-grey">
+                            <div class="column is-half has-text-left">0%</div>
+                            <div class="column is-half has-text-right">100%</div>
+                        </div>
+                        <div class="content is-small has-text-centered">
+                            <p id="metric-insight" class="is-italic">Removing top relevant pixels causes a sharp drop in segmentation quality.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="columns is-centered">
+                <div class="column is-full">
+                    <div class="box has-text-centered">
+                        <h4 class="title is-5">Perturbed Support Set</h4>
+                        <p class="subtitle is-6 has-text-grey">Visualizing the impact on the 5 support images</p>
+                        
+                        <figure class="image">
+                            <img id="dynamic-support-img" src="./static/images/dauc/support_0.png" alt="Perturbed Support" style="max-height: 300px; width: auto; margin: 0 auto;">
+                        </figure>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+
+    <section class="section" id="BibTeX">
+        <div class="container is-max-desktop content">
+            <h2 class="title">BibTeX</h2>
+            <pre><code>@article{AffEx2026,
+  title={Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design},
+  author={De Marinis, Pasquale and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
+  journal={arXiv},
+  year={2025}
+}</code></pre>
+        </div>
+    </section>
+
+
+    <footer class="footer">
+        <div class="container">
+            <div class="content has-text-centered">
+                <a class="icon-link" href="#">
+                    <i class="fas fa-file-pdf"></i>
+                </a>
+                <a class="icon-link" href="https://github.com/pasqualedem" class="external-link" disabled>
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+            <div class="columns is-centered">
+                <div class="column is-8">
+                    <div class="content">
+                        <p>
+                            This website is licensed under a <a rel="license"
+                                href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+                                Commons Attribution-ShareAlike 4.0 International License</a>.
+                        </p>
+                        <p>
+                            This website uses the <a
+                                href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> template.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="./static/js/swiper.js"></script>
+
+</body>
+
+</html>
