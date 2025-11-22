@@ -32,3 +32,11 @@ dependencies = [
     "transformers>=4.51.3",
     "wandb>=0.20.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["affex*"]
+
+
+[project.scripts]
+app = "app:launch"

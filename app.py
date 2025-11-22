@@ -3,16 +3,11 @@
 # and visualize with lovely-tensors.
 
 import copy
-import os
-from pyexpat import model
-import sys
 import traceback
-from pathlib import Path
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt           
+import subprocess
 
 
 # Core deps used in the original notebook
@@ -675,6 +670,10 @@ def main():
                                 tensor_to_pil(seg_rgb),
                                 use_container_width=True,
                                 )
+
+
+def launch():
+    subprocess.run(["streamlit", "run", "app.py"], check=True)
 
 
 if __name__ == "__main__":
