@@ -74,6 +74,7 @@ class FSSCausalMetric(Metric):
         measure="logits",
         skip_empty=False,
         n_mid_statuses=30,
+        mid_statuses_distribution="log",
     ):
         r"""Create deletion/insertion metric instance.
 
@@ -114,6 +115,7 @@ class FSSCausalMetric(Metric):
         self.measure = measure
         self.skip_empty = skip_empty
         self.n_mid_statuses = n_mid_statuses
+        self.mid_statuses_distribution = mid_statuses_distribution
 
         if self.percentage is not None:
             assert 0 < self.percentage < 1.0, "percentage must be in (0, 1)"
@@ -278,11 +280,16 @@ class FSSCausalMetric(Metric):
         ), f"Expected shape {(B, MHW)}, got {salient_order.shape}"
 
         self.set_steps(MHW, ordered_saliency)
-        self.mid_status_frequency = np.unique(
-            np.round(np.logspace(0, np.log10(self.computed_n_steps), num=self.n_mid_statuses)).astype(
-                int
+        if self.mid_statuses_distribution == "linear":
+            self.mid_status_frequency = list(
+                range(0, self.computed_n_steps + 1, max(1, self.computed_n_steps // self.n_mid_statuses))
             )
-        ).tolist()
+        else:  # log distribution
+            self.mid_status_frequency = np.unique(
+                np.round(np.logspace(0, np.log10(self.computed_n_steps), num=self.n_mid_statuses)).astype(
+                    int
+                )
+            ).tolist()
 
         scores = torch.empty((self.computed_n_steps + 1, B))
         start, finish, caption = self.get_start_finish(input_dict)

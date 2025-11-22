@@ -8,6 +8,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt           
 import subprocess
+import pandas as pd
 
 
 # Core deps used in the original notebook
@@ -31,6 +32,7 @@ except Exception:
     saliency = None
 
 from io import BytesIO, StringIO
+import zipfile
 
 # Project-specific imports (same names used in the notebook)
 try:
@@ -370,7 +372,7 @@ def main():
             show_batch = st.button("Show Batch")
 
     # Parameter file path (same as notebook used)
-    param_relpath = f"parameters/{dataset}/cut_iauc_miou.yaml"
+    param_relpath = f"parameters/{dataset}/cut_iauc_miou_{config}.yaml"
 
     try:
         parameters = load_parameters(dataset, param_relpath)
@@ -531,6 +533,7 @@ def main():
                 n_steps=n_steps,
                 measure=measure,
                 n_mid_statuses=n_mid_statuses,
+                mid_statuses_distribution="linear",
             )
             metrics["dauc"] = FSSCausalMetric(
                 model=model,
@@ -538,6 +541,7 @@ def main():
                 n_steps=n_steps,
                 measure=measure,
                 n_mid_statuses=n_mid_statuses,
+                mid_statuses_distribution="linear",
             )
 
             if (
@@ -626,11 +630,26 @@ def main():
                         file_name=f"{name}_curve.svg",
                         mime="image/svg+xml",
                     )
+                    
+                    # Download scores as CSV
+                    csv_buf = StringIO()
+                    df = pd.DataFrame(
+                        scores.numpy(), columns=[f"BatchElem_{i}" for i in range(scores.shape[1])]
+                    )
+                    df.to_csv(csv_buf, index=False)
+                    csv_buf.seek(0)
 
+                    st.download_button(
+                        label="Download scores (CSV)",
+                        data=csv_buf.getvalue(),
+                        file_name=f"{name}_scores.csv",
+                        mime="text/csv",
+                    )
                 
             for name, result in st.session_state["metrics"].items():              
                 with st.expander(f"{name.upper()} Mid Statuses Visualization"):
                     mid_statuses = result["mid_statuses"]
+                    images_for_zip = []  # collect (filename, PIL Image) for download
                     for mid_status in mid_statuses:
                         j, mid_images, mid_masks, probs, top_pred = mid_status
                         st.subheader(f"{name.upper()} Mid Status {j}")
@@ -646,30 +665,55 @@ def main():
                                     unnormalize(mid_images[0, shot_idx+1])[0].cpu(),
                                     mid_masks[0, shot_idx, 1].cpu().bool(),
                                 )
+                                pil_shot = tensor_to_pil(masked_shot)
                                 st.image(
-                                    tensor_to_pil(masked_shot),
+                                    pil_shot,
                                     use_container_width=True,
                                 )
+                                images_for_zip.append((f"{name}_mid{j}_shot{shot_idx}.png", pil_shot))
                                 
                         prob_col, seg_col = st.columns(2)
                         
                         with prob_col:
                             st.subheader(f"{name.upper()} Mid Status {j} - Probs")
+                            prob_img = tensor_to_heatmap(probs[0, 1].cpu())
                             st.image(
-                                tensor_to_heatmap(probs[0, 1].cpu()),
+                                prob_img,
                                 use_container_width=True,
                             )
+                            images_for_zip.append((f"{name}_mid{j}_probs.png", prob_img))
                         with seg_col:
-                            mid_pred_seg = probs.argmax(dim=1)[0]  # (B, n_ways, H, W)
+                            mid_pred_seg = probs.argmax(dim=1)[0]  # (H, W)
                             st.subheader(f"{name.upper()} Mid Status {j} - Segmentation")
                             seg_rgb = tint_foreground(
                                 unnormalize(mid_images[0, 0])[0].cpu(),
                                 mid_pred_seg.cpu().bool(),
                             )
+                            pil_seg = tensor_to_pil(seg_rgb)
                             st.image(
-                                tensor_to_pil(seg_rgb),
+                                pil_seg,
                                 use_container_width=True,
                                 )
+                            images_for_zip.append((f"{name}_mid{j}_seg.png", pil_seg))
+
+                    # Download all mid-status images as a ZIP
+                    try:
+                        zip_buffer = BytesIO()
+                        with zipfile.ZipFile(zip_buffer, "w") as zf:
+                            for fname, pil in images_for_zip:
+                                img_buf = BytesIO()
+                                pil.save(img_buf, format="PNG")
+                                img_buf.seek(0)
+                                zf.writestr(fname, img_buf.getvalue())
+                        zip_buffer.seek(0)
+                        st.download_button(
+                            label="Download all mid statuses (ZIP)",
+                            data=zip_buffer.getvalue(),
+                            file_name=f"{name}_mid_statuses.zip",
+                            mime="application/zip",
+                        )
+                    except Exception as e:
+                        error_box("Failed to create ZIP of mid-status images.", e)
 
 
 def launch():
