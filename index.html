@@ -163,7 +163,7 @@
                 <img id="teaser-img" src="./static/images/FSSAffex.svg" alt="Affinity Explainer Framework"
                     style="width:100%; height:auto;" />
                 <h2 class="subtitle has-text-centered">
-                    <strong>Affinity Explainer (AffEx)</strong> computes attribution maps using the matching scores
+                    <strong>Affinity Explainer</strong> computes attribution maps using the matching scores
                     between query and support images in matching-based FSS models. It reveals the specific support
                     regions that most influence the segmentation of the query.
                 </h2>
@@ -263,10 +263,10 @@
             <div class="columns is-centered">
                 <div class="column is-full-width">
                     <h2 class="title is-3"><img src="favicon.svg" style="width:48px; height:48px; vertical-align: middle;"
-                        alt="AffEx Icon" /> Affinity Explainer (AffEx)</h2> 
+                        alt="AffEx Icon" /> Affinity Explainer</h2> 
                     <div class="content has-text-justified">
                         <p>
-                            <strong>Affinity Explainer (AffEx)</strong> is a novel interpretability framework tailored
+                            <strong>Affinity Explainer</strong> is a novel interpretability framework tailored
                             for matching-based Few-Shot Semantic Segmentation (FSS) models. Unlike generic explanation
                             methods (e.g., Grad-CAM) that often struggle with the multi-image inputs of few-shot tasks,
                             AffEx directly leverages the model's internal <strong>matching mechanism</strong> to reveal
@@ -403,7 +403,8 @@
                             </div>
                         </div>
                         <div class="afx-controls">
-                            <button class="afx-btn" id="afx-btn-next">Next Step</button>
+                            <button class="afx-btn" disabled id="afx-btn-previous">Previous</button>
+                            <button class="afx-btn" id="afx-btn-next">Next</button>
                             <button class="afx-btn reset" id="afx-btn-reset">Reset</button>
                         </div>
 
@@ -612,16 +613,16 @@
                             <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
                             <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
                             <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
-                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">(Conf)</span></th>
+                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">@1%</span><br><span class="unit">(Conf)</span></th>
                             <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
                             <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="model-header"><th colspan="7">Model: DCAMA</th></tr>
+                        <tr class="model-header"><th colspan="7">DCAMA</th></tr>
                         
                         <tr><td>Random</td><td>47.50</td><td>46.85</td><td>0.65</td><td>43.36</td><td>41.42</td><td>31.62</td></tr>
-                        <tr><td>Gaussian Noise</td><td>52.32</td><td>15.46</td><td>36.86</td><td>53.80</td><td>31.08</td><td>17.71</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>52.32</td><td>15.46</td><td>36.86</td><td>53.80</td><td>31.08</td><td>17.71</td></tr>
                         <tr><td>Saliency</td><td>52.02</td><td>41.10</td><td>10.92</td><td>44.97</td><td>37.01</td><td>23.73</td></tr>
                         <tr><td>Integrated Grad.</td><td>49.23</td><td>45.97</td><td>3.27</td><td>45.63</td><td>34.18</td><td>22.25</td></tr>
                         <tr><td>Guided IG</td><td>50.77</td><td>45.10</td><td>5.67</td><td>51.25</td><td>30.17</td><td>21.65</td></tr>
@@ -633,10 +634,10 @@
                         <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>52.32</td><td>15.06</td><td><b>37.26</b></td><td><b>62.60</b></td><td><b>16.43</b></td><td>12.27</td></tr>
                         <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>53.24</td><td>23.77</td><td>29.48</td><td>60.49</td><td>19.40</td><td>13.67</td></tr>
 
-                        <tr class="model-header"><th colspan="7">Model: DMTNet</th></tr>
+                        <tr class="model-header"><th colspan="7">DMTNet</th></tr>
 
                         <tr><td>Random</td><td>21.21</td><td>20.98</td><td>0.23</td><td>60.36</td><td>24.93</td><td>31.88</td></tr>
-                        <tr><td>Gaussian Noise</td><td>39.08</td><td>15.71</td><td>23.37</td><td>59.35</td><td>20.69</td><td>13.26</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>39.08</td><td>15.71</td><td>23.37</td><td>59.35</td><td>20.69</td><td>13.26</td></tr>
                         <tr><td>Saliency</td><td>36.51</td><td>26.79</td><td>9.72</td><td>63.09</td><td>21.05</td><td>15.77</td></tr>
                         <tr><td>Integrated Grad.</td><td>26.25</td><td>19.47</td><td>6.78</td><td>62.51</td><td>21.63</td><td>20.32</td></tr>
                         <tr><td>Blur IG</td><td>35.04</td><td>20.32</td><td>14.72</td><td>62.17</td><td>21.54</td><td>20.20</td></tr>
@@ -655,16 +656,16 @@
                             <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
                             <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
                             <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
-                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">(Conf)</span></th>
+                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">@1%</span><br><span class="unit">(Conf)</span></th>
                             <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
                             <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="model-header"><th colspan="7">Model: DCAMA</th></tr>
+                        <tr class="model-header"><th colspan="7">DCAMA</th></tr>
                         
                         <tr><td>Random</td><td>71.35</td><td>70.77</td><td>0.59</td><td>41.71</td><td>55.24</td><td>33.42</td></tr>
-                        <tr><td>Gaussian Noise</td><td>74.67</td><td>23.36</td><td>51.31</td><td>55.32</td><td>35.65</td><td>15.86</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>74.67</td><td>23.36</td><td>51.31</td><td>55.32</td><td>35.65</td><td>15.86</td></tr>
                         <tr><td>Saliency</td><td>72.99</td><td>66.73</td><td>6.27</td><td>44.32</td><td>46.42</td><td>24.46</td></tr>
                         <tr><td>Integrated Grad.</td><td>72.38</td><td>70.22</td><td>2.16</td><td>42.94</td><td>45.01</td><td>23.26</td></tr>
                         <tr><td>Guided IG</td><td>71.74</td><td>70.35</td><td>1.39</td><td>49.08</td><td>42.53</td><td>23.19</td></tr>
@@ -676,10 +677,10 @@
                         <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>73.16</td><td>21.19</td><td><b>51.97</b></td><td><b>67.91</b></td><td><b>13.71</b></td><td>7.09</td></tr>
                         <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>75.46</td><td>45.45</td><td>30.01</td><td>66.60</td><td>13.93</td><td>7.82</td></tr>
 
-                        <tr class="model-header"><th colspan="7">Model: DMTNet</th></tr>
+                        <tr class="model-header"><th colspan="7">DMTNet</th></tr>
 
                         <tr><td>Random</td><td>29.01</td><td>28.46</td><td>0.55</td><td>60.35</td><td>33.89</td><td>46.01</td></tr>
-                        <tr><td>Gaussian Noise</td><td>54.53</td><td>24.41</td><td>30.12</td><td>59.90</td><td>33.24</td><td>31.00</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>54.53</td><td>24.41</td><td>30.12</td><td>59.90</td><td>33.24</td><td>31.00</td></tr>
                         <tr><td>Saliency</td><td>52.43</td><td>41.22</td><td>11.21</td><td>64.85</td><td>29.85</td><td>25.49</td></tr>
                         <tr><td>Integrated Grad.</td><td>37.13</td><td>29.08</td><td>8.05</td><td>63.99</td><td>30.31</td><td>33.07</td></tr>
                         <tr><td>Blur IG</td><td>47.83</td><td>33.82</td><td>14.01</td><td>63.62</td><td>29.77</td><td>33.13</td></tr>
