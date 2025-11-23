@@ -91,6 +91,15 @@ bash scripts/download_coco.sh
 
 The datasets will be automatically organized in the appropriate directory structure for use with the framework.
 
+## Models
+
+AffinityExplainer supports DCAMA and DMTNet few-shot segmentation models. Download pre-trained weights using the scripts below:
+
+```bash
+bash scripts/download_dcama.sh
+bash scripts/download_dmtnet.sh
+```
+
 ---
 
 ## Reproduce Results

@@ -10,8 +10,8 @@ from collections import namedtuple
 from torchvision.models import resnet50
 from transformers import AutoImageProcessor
 
-from affex.models.bam import build_bam
-from affex.models.hdmnet import build_hdmnet
+# from affex.models.bam import build_bam
+# from affex.models.hdmnet import build_hdmnet
 from affex.models.la.build_lam import build_lam, build_lam_vit_mae_b
 
 from .dcama import build_dcama
@@ -42,8 +42,8 @@ MODEL_REGISTRY = {
     "dmtnet": build_dmtnet,
     "patnet": build_patnet,
     "resnet50": build_resnet50,
-    "hdmnet": build_hdmnet,
-    "bam": build_bam,
+    # "hdmnet": build_hdmnet,
+    # "bam": build_bam,
     "la": build_lam_vit_mae_b,
 }
 
