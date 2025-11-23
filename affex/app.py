@@ -635,7 +635,23 @@ def main():
             st.success("Complete.")
 
 def launch():
-    subprocess.run(["streamlit", "run", "app.py"], check=True)
+    cmd = ["streamlit", "run", "affex/app.py"]
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    logs = ""
+    for line in proc.stdout:
+        logs += line
+        # print logs to console as well
+        print(line, end="")
+    proc.stdout.close()
+    ret = proc.wait()
+    if ret != 0:
+        raise subprocess.CalledProcessError(ret, cmd, output=logs)
 
 if __name__ == "__main__":
     main()

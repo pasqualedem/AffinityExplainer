@@ -1,4 +1,4 @@
-# <img src="imgs/icon.svg" alt="icon" width="64" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
+# <img src="imgs/icon.svg" alt="icon" width="40" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
 
 <div align="center">
 
@@ -45,6 +45,12 @@ uvx --from https://github.com/pasqualedem/AffinityExplainer app
 > **💡 Requirements**: Only [uv](https://docs.astral.sh/uv/) is needed to run this command
 
 This launches an interactive web application where you can explore the interpretability capabilities of matching-based few-shot segmentation models.
+
+You can also run the demo locally after [installation](#installation):
+
+```bash
+streamlit run affex/app.py
+```
 
 ---
 
