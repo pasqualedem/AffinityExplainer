@@ -1,4 +1,4 @@
-# Affinity Explainer
+# <img src="imgs/icon.svg" alt="icon" width="64" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
 
 <div align="center">
 
@@ -6,6 +6,7 @@
 
 *Few-Shot Semantic Segmentation meets Explainability*
 
+[![Website](https://img.shields.io/badge/Website-Visit-orange.svg)](https://pasqualedem.github.io/AffinityExplainer/)
 [![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org)
 [![Demo](https://img.shields.io/badge/Demo-Launch-blue.svg)](#one-line-demo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
