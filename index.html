@@ -21,6 +21,14 @@
 
         gtag('config', 'G-PYVRSFMDRL');
     </script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
 
@@ -30,6 +38,11 @@
     <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
     <link rel="stylesheet" href="./static/css/index.css">
+    <link rel="stylesheet" href="./static/css/slider.css">
+    <link rel="stylesheet" href="./static/css/table.css">
+    <link rel="stylesheet" href="./static/css/affex_anim.css">
+    <link rel="stylesheet" href="./static/css/affex_variants.css">
+
     <link rel="icon" href="./favicon.svg">
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -37,6 +50,8 @@
     <script src="./static/js/bulma-carousel.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="./static/js/interactive_plot.js"></script>
+    <script src="./static/js/table.js"></script>
+    <script src="./static/js/affex_anim.js"></script>
 </head>
 
 <body>
@@ -80,8 +95,9 @@
             <div class="container is-max-desktop">
                 <div class="columns is-centered">
                     <div class="column has-text-centered">
-                        <h1 class="title is-1 publication-title">Matching-Based Few-Shot Semantic Segmentation Models <br> Are Interpretable by Design</h1>
-                        <!-- <h2 class="title is-5 publication-title">CVPR 2026</h2> -->
+                        <h1 class="title is-1 publication-title">Matching-Based Few-Shot Semantic Segmentation Models
+                            <br> Are Interpretable by Design
+                        </h1>
                         <div class="is-size-5 publication-authors">
                             <span class="author-block">
                                 <a href="https://pasqualedem.github.io/">Pasquale De Marinis</a><sup>1</sup>,</span>
@@ -108,8 +124,7 @@
                         <div class="column has-text-centered">
                             <div class="publication-links">
                                 <span class="link-block">
-                                    <a href="#"
-                                        class="external-link button is-normal is-rounded is-dark">
+                                    <a href="#" class="external-link button is-normal is-rounded is-dark">
                                         <span class="icon">
                                             <i class="fas fa-file-pdf"></i>
                                         </span>
@@ -117,8 +132,7 @@
                                     </a>
                                 </span>
                                 <span class="link-block">
-                                    <a href="#"
-                                        class="external-link button is-normal is-rounded is-dark">
+                                    <a href="#" class="external-link button is-normal is-rounded is-dark">
                                         <span class="icon">
                                             <i class="ai ai-arxiv"></i>
                                         </span>
@@ -149,7 +163,9 @@
                 <img id="teaser-img" src="./static/images/FSSAffex.svg" alt="Affinity Explainer Framework"
                     style="width:100%; height:auto;" />
                 <h2 class="subtitle has-text-centered">
-                    <strong>Affinity Explainer (AffEx)</strong> computes attribution maps using the matching scores between query and support images in matching-based FSS models. It reveals the specific support regions that most influence the segmentation of the query.
+                    <strong>Affinity Explainer (AffEx)</strong> computes attribution maps using the matching scores
+                    between query and support images in matching-based FSS models. It reveals the specific support
+                    regions that most influence the segmentation of the query.
                 </h2>
             </div>
         </div>
@@ -162,100 +178,317 @@
                     <h2 class="title is-3">Abstract</h2>
                     <div class="content has-text-justified">
                         <p>
-                            Explainable AI (XAI) has made significant progress in conventional vision tasks, yet interpretability in Few-Shot Learning (FSL)—and specifically Few-Shot Semantic Segmentation (FSS)—remains underexplored. Existing FSS models are primarily evaluated on accuracy, leaving their internal reasoning opaque. This ambiguity makes it difficult to diagnose failures or select optimal support examples.
+                            Explainable AI (XAI) has made significant progress in conventional vision tasks, yet
+                            interpretability in Few-Shot Learning (FSL)—and specifically Few-Shot Semantic Segmentation
+                            (FSS)—remains underexplored. Existing FSS models are primarily evaluated on accuracy,
+                            leaving their internal reasoning opaque. This ambiguity makes it difficult to diagnose
+                            failures or select optimal support examples.
                         </p>
                         <p>
-                            In this paper, we introduce <strong>Affinity Explainer (AffEx)</strong>, a framework designed to interpret matching-based FSS models. By leveraging the inherent matching mechanisms (similarity scores) of these architectures, AffEx derives contribution maps that highlight which support pixels most strongly influence the query prediction. We propose three variants: <em>Unmasked</em>, <em>Masked</em>, and <em>Signed AffEx</em>. 
+                            In this paper, we introduce <strong>Affinity Explainer (AffEx)</strong>, a framework
+                            designed to interpret matching-based FSS models. By leveraging the inherent matching
+                            mechanisms (similarity scores) of these architectures, AffEx derives contribution maps that
+                            highlight which support pixels most strongly influence the query prediction. We propose
+                            three variants: <em>Unmasked</em>, <em>Masked</em>, and <em>Signed AffEx</em>.
                         </p>
                         <p>
-                            Furthermore, we extend the causal evaluation metrics <strong>Insertion/Deletion Area Under the Curve (IAUC/DAUC)</strong> to the FSS domain to rigorously quantify interpretability. Our extensive benchmark on COCO-20i and Pascal-5i demonstrates that AffEx provides actionable insights into model behavior and outperforms standard model-agnostic explanation methods.
+                            Furthermore, we extend the causal evaluation metrics <strong>Insertion/Deletion Area Under
+                                the Curve (IAUC/DAUC)</strong> to the FSS domain to rigorously quantify
+                            interpretability. Our extensive benchmark on COCO-20i and Pascal-5i demonstrates that AffEx
+                            provides actionable insights into model behavior and outperforms standard model-agnostic
+                            explanation methods.
                         </p>
                     </div>
                 </div>
             </div>
-            </div>
+        </div>
     </section>
 
     <section class="hero is-light is-small">
         <div class="hero-body">
-        <div class="container is-max-desktop">
-            <div class="columns is-centered has-text-centered">
-                <div class="column is-full-width">
-                <h2 class="title is-3">Qualitative Results</h2><br>
-                <p>Visualizing attributions generated by AffEx compared to other methods (Saliency, Blur IG, XRAI).</p><br>
-            <div class="container">
-                <div class="swiper swiper-container">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
-                            <img src="./static/images/FSSAffex_examples_website_1.svg" alt="Qualitative Example 1" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
-                        </div>
-                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
-                            <img src="./static/images/FSSAffex_examples_website_2.svg" alt="Qualitative Example 2" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
-                        </div>
-                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
-                            <img src="./static/images/FSSAffex_examples_website_3.svg" alt="Qualitative Example 3" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
-                        </div>
-                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
-                            <img src="./static/images/FSSAffex_examples_website_4.svg" alt="Qualitative Example 4" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
-                        </div>
-                        <div class="swiper-slide" style="display:flex;align-items:center;justify-content:center;">
-                            <img src="./static/images/FSSAffex_examples_website_5.svg" alt="Qualitative Example 5" style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+            <div class="container is-max-desktop">
+                <div class="columns is-centered has-text-centered">
+                    <div class="column is-full-width">
+                        <h2 class="title is-3">Qualitative Results</h2><br>
+                        <p>Visualizing attributions generated by AffEx compared to other methods (Saliency, Blur IG,
+                            XRAI).</p><br>
+                        <div class="container">
+                            <div class="swiper swiper-container">
+                                <div class="swiper-wrapper">
+                                    <div class="swiper-slide"
+                                        style="display:flex;align-items:center;justify-content:center;">
+                                        <img src="./static/images/FSSAffex_examples_website_1.svg"
+                                            alt="Qualitative Example 1"
+                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    </div>
+                                    <div class="swiper-slide"
+                                        style="display:flex;align-items:center;justify-content:center;">
+                                        <img src="./static/images/FSSAffex_examples_website_2.svg"
+                                            alt="Qualitative Example 2"
+                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    </div>
+                                    <div class="swiper-slide"
+                                        style="display:flex;align-items:center;justify-content:center;">
+                                        <img src="./static/images/FSSAffex_examples_website_3.svg"
+                                            alt="Qualitative Example 3"
+                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    </div>
+                                    <div class="swiper-slide"
+                                        style="display:flex;align-items:center;justify-content:center;">
+                                        <img src="./static/images/FSSAffex_examples_website_4.svg"
+                                            alt="Qualitative Example 4"
+                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    </div>
+                                    <div class="swiper-slide"
+                                        style="display:flex;align-items:center;justify-content:center;">
+                                        <img src="./static/images/FSSAffex_examples_website_5.svg"
+                                            alt="Qualitative Example 5"
+                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    </div>
+                                </div>
+                                <div class="swiper-pagination"></div>
+                                <div class="swiper-button-next"></div>
+                                <div class="swiper-button-prev"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="swiper-pagination"></div>
-                    <div class="swiper-button-next"></div>
-                    <div class="swiper-button-prev"></div>
                 </div>
             </div>
         </div>
         </div>
+    </section>
+
+    <section class="section">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered">
+                <div class="column is-full-width">
+                    <h2 class="title is-3"><img src="favicon.svg" style="width:48px; height:48px; vertical-align: middle;"
+                        alt="AffEx Icon" /> Affinity Explainer (AffEx)</h2> 
+                    <div class="content has-text-justified">
+                        <p>
+                            <strong>Affinity Explainer (AffEx)</strong> is a novel interpretability framework tailored
+                            for matching-based Few-Shot Semantic Segmentation (FSS) models. Unlike generic explanation
+                            methods (e.g., Grad-CAM) that often struggle with the multi-image inputs of few-shot tasks,
+                            AffEx directly leverages the model's internal <strong>matching mechanism</strong> to reveal
+                            how prediction decisions are made.
+                        </p>
+
+                        <h4 class="title is-5">Core Mechanism</h4>
+                        <p>
+                            Matching-based models compute dense correlations between <em>Query</em> and <em>Support</em>
+                            features. AffEx intercepts these raw similarity scores and transforms them into intuitive
+                            attribution maps through a three-step process:
+                        </p>
+                        <ol>
+                            <li><strong>ROI Averaging:</strong> The high-dimensional 4D correlation tensors (Query
+                                $\times$ Support) are collapsed into 2D maps by averaging scores over the relevant Query
+                                Region of Interest (ROI). This isolates the support features that are most similar to
+                                the target object in the query image.</li>
+                            <li><strong>Softmax Normalization:</strong> The raw scores are normalized into a probability
+                                distribution, allowing us to interpret them as relative contributions. High
+                                probabilities (red) indicate strong semantic correspondence, while low probabilities
+                                (blue) indicate irrelevance.</li>
+                            <li><strong>Feature Ablation & Aggregation:</strong> Since modern FSS models extract
+                                features at multiple depths, AffEx calculates <em>ablation weights</em> ($w_j$) to
+                                measure the importance of each layer. The final attribution map is a weighted sum of
+                                these multi-scale contributions.</li>
+                        </ol>
+
+                        <h4 class="title is-5 has-text-centered">Process Visualization</h4>
+                        <p id="afx-caption" class="afx-caption">Initialize: Query (Cat) vs Support Set (Black cat, Dog)</p>
+
+                        <div id="affex-anim-container">
+                            <div class="afx-scaler">
+                                <div class="afx-stage">
+                                    <div class="afx-phase-container">
+                                        <div class="afx-phase-pill" id="afx-phase-label"></div>
+                                    </div>
+
+                                    <div class="afx-column">
+                                        <div class="afx-label">Query</div>
+                                        <div class="afx-image-box">
+                                            🐈
+                                            <div class="afx-roi-overlay"></div>
+                                        </div>
+                                        <div class="afx-mini-stack">
+                                            <div class="afx-mini-layer"></div>
+                                            <div class="afx-mini-layer"></div>
+                                            <div class="afx-mini-layer"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="afx-process-zone">
+                                        <div class="afx-connector-layer">
+                                            <div class="afx-line afx-line-main"></div>
+                                            <div class="afx-line afx-line-vertical"></div>
+                                            <div class="afx-line afx-line-feed-top"></div>
+                                            <div class="afx-line afx-line-feed-bot"></div>
+                                            <div class="afx-line afx-line-right-top"></div>
+                                            <div class="afx-line afx-line-right-bot"></div>
+                                        </div>
+
+                                        <div class="afx-stack-wrapper" id="afx-stack-car">
+                                            <div class="afx-stack-label">Match Tensor</div>
+                                            <div class="afx-score-card afx-layer-3">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w3</div>
+                                            </div>
+                                            <div class="afx-score-card afx-layer-2">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w2</div>
+                                            </div>
+                                            <div class="afx-score-card afx-layer-1">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w1</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="afx-stack-wrapper" id="afx-stack-plant">
+                                            <div class="afx-stack-label">Match Tensor</div>
+                                            <div class="afx-score-card afx-layer-3">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w3</div>
+                                            </div>
+                                            <div class="afx-score-card afx-layer-2">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w2</div>
+                                            </div>
+                                            <div class="afx-score-card afx-layer-1">
+                                                <div class="afx-tensor-face"></div>
+                                                <div class="afx-tensor-depth-1"></div>
+                                                <div class="afx-tensor-depth-2"></div>
+                                                <div class="afx-w-tag">w1</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="afx-column" style="gap: 60px;">
+                                        <div>
+                                            <div class="afx-label">Support 1</div>
+                                            <div class="afx-image-box">
+                                                🐈‍⬛
+                                                <div class="afx-heatmap-overlay afx-heat-strong"></div>
+                                            </div>
+                                            <div class="afx-mini-stack">
+                                                <div class="afx-mini-layer"></div>
+                                                <div class="afx-mini-layer"></div>
+                                                <div class="afx-mini-layer"></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div class="afx-label">Support 2</div>
+                                            <div class="afx-image-box">
+                                                🐕
+                                                <div class="afx-heatmap-overlay afx-heat-weak"></div>
+                                            </div>
+                                            <div class="afx-mini-stack">
+                                                <div class="afx-mini-layer"></div>
+                                                <div class="afx-mini-layer"></div>
+                                                <div class="afx-mini-layer"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="afx-controls">
+                            <button class="afx-btn" id="afx-btn-next">Next Step</button>
+                            <button class="afx-btn reset" id="afx-btn-reset">Reset</button>
+                        </div>
+
+                        <br>
+                        <h4 class="title is-5">AffEx Variants</h4>
+                        <p>
+                            We propose three variants to handle different interpretability needs:
+                        </p>
+
+                        <div class="affex-variants-container">
+                            <!-- 1. Unmasked -->
+                            <div class="afx-card">
+                                <div class="afx-card-title">Unmasked AffEx</div>
+                                <div class="afx-visual-box">
+                                    <div class="afx-icon">🐈‍⬛</div>
+                                    <div class="afx-overlay afx-heat-unmasked"></div>
+                                </div>
+                                <div class="afx-desc">
+                                    Computes attributions using the full image context. Useful for identifying if
+                                    background clutter is distracting the model.
+                                    <br>
+                                    <span class="afx-math">A(I<sub>q</sub>, I<sub>s</sub>)</span>
+                                </div>
+                            </div>
+
+                            <!-- 2. Masked -->
+                            <div class="afx-card">
+                                <div class="afx-card-title">Masked AffEx</div>
+                                <div class="afx-visual-box">
+                                    <div class="afx-mask-guide"></div>
+                                    <div class="afx-icon">🐈‍⬛</div>
+                                    <div class="afx-overlay afx-heat-masked"></div>
+                                </div>
+                                <div class="afx-desc">
+                                    Strictly confines attention to the object mask. Applies Gaussian smoothing at
+                                    boundaries to prevent artifacts.
+                                    <br>
+                                    <span class="afx-math">A(I<sub>q</sub>, I<sub>s</sub>) &odot; M<sub>s</sub></span>
+                                </div>
+                            </div>
+
+                            <!-- 3. Signed -->
+                            <div class="afx-card">
+                                <div class="afx-card-title">Signed AffEx</div>
+                                <div class="afx-visual-box">
+                                    <div class="afx-icon">🐈‍⬛</div>
+                                    <div class="afx-overlay afx-heat-signed"></div>
+                                </div>
+                                <div class="afx-desc">
+                                    Models background as negative. Red regions contribute positively; Blue regions
+                                    (background) contribute negatively.
+                                    <br>
+                                    <span class="afx-math">A &middot; Sign(M<sub>s</sub>)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
-            </div>
-            </div>
+        </div>
     </section>
 
     <section class="section">
         <div class="container is-max-desktop">
 
-            <div class="columns is-centered">
-                <div class="column is-full-width">
-                    <h2 class="title is-3">Methodology</h2>
-
-                    <h3 class="title is-4">Affinity Explainer (AffEx)</h3>
-                    <div class="content has-text-justified">
-                        <p>
-                            AffEx operates by analyzing the matching scores computed between query and support features. We define an attribution function that maps these scores to spatial importance maps over the support images. 
-                        </p>
-                        <ul>
-                            <li><strong>Unmasked AffEx:</strong> Uses raw matching scores normalized via softmax to determine pixel-wise contribution.</li>
-                            <li><strong>Masked AffEx:</strong> Incorporates the support mask to constrain attributions to the object of interest, using Gaussian smoothing at boundaries.</li>
-                            <li><strong>Signed AffEx:</strong> Interprets background regions as having negative contributions, assigning negative values to non-object areas.</li>
-                        </ul>
-                        <p>
-                            The final map is obtained by aggregating attributions across network layers using <strong>Feature Ablation</strong> weights, ensuring that the most discriminative features have higher influence.
-                        </p>
-                    </div>
-                    <h3 class="title is-4">Causal Evaluation Metrics</h3>
-                    <div class="content has-text-justified">
-                        <p>
-                            To evaluate the faithfulness of our explanations, we extend <strong>Insertion AUC (IAUC)</strong> and <strong>Deletion AUC (DAUC)</strong> to FSS. 
-                        </p>
-                        <p>
-                            <strong>DAUC</strong> measures the drop in model performance (mIoU or Confidence) as we progressively remove the "most important" pixels from the support set. A good explanation method should cause a rapid drop. Conversely, <strong>IAUC</strong> measures performance gain as we introduce important pixels to an empty support set. We also introduce <strong>mIoULoss@p</strong>, which quantifies the accuracy loss when using only the top <em>p%</em> of relevant pixels.
-                        </p>
-                    </div>
-                    </div>
-            </div>
-            </div>
-    </section>
-
-<section class="section">
-        <div class="container is-max-desktop">
-            <h2 class="title is-3 has-text-centered">Interactive Causal Analysis</h2>
-            <div class="content has-text-centered">
+            <h2 class="title is-3">Causal Evaluation Metrics</h2>
+            <div class="content has-text-justified">
                 <p>
-                    Use the slider below to observe how progressively removing important pixels (DAUC) or adding them (IAUC) affects the support set and the model's prediction.
+                    To evaluate the faithfulness of our explanations, we extend <strong>Insertion AUC (IAUC)</strong>
+                    and <strong>Deletion AUC (DAUC)</strong> to FSS.
                 </p>
+                <p>
+                    <strong>DAUC</strong> measures the drop in model performance (mIoU or Confidence) as we
+                    progressively remove the "most important" pixels from the support set. A good explanation method
+                    should cause a rapid drop. Conversely, <strong>IAUC</strong> measures performance gain as we
+                    introduce important pixels to an empty support set. We also introduce <strong>mIoULoss@p</strong>,
+                    which quantifies the accuracy loss when using only the top <em>p%</em> of relevant pixels.
+                </p>
+            </div>
+
+            <br>
+            <h3 class="title is-4 has-text-centered">Interactive Causal Analysis</h3>
+            <div class="content has-text-centered">
+                <p>Use the slider to observe the effect of perturbing the support set.</p>
             </div>
 
             <div class="tabs is-centered is-toggle is-rounded">
@@ -276,48 +509,191 @@
             </div>
 
             <div class="columns is-vcentered">
+
                 <div class="column is-6">
-                    <div class="box has-text-centered" style="height: 100%;">
-                        <h4 class="title is-5">Query Prediction</h4>
-                        <figure class="image is-4by3">
-                            <img id="dynamic-query-img" src="./static/images/dauc/query_0.png" alt="Query Prediction">
-                        </figure>
+                    <div class="box" style="height: 100%;">
+                        <h4 class="title is-5 has-text-centered">Query Analysis</h4>
+                        <div class="columns is-mobile is-variable is-1">
+                            <div class="column is-half has-text-centered">
+                                <span class="tag is-dark is-light">Prediction</span>
+                                <figure class="image is-4by3">
+                                    <img id="img-seg" src="./static/images/dauc/dauc_mid1_seg.png" alt="Segmentation">
+                                </figure>
+                            </div>
+                            <div class="column is-half has-text-centered">
+                                <span class="tag is-warning is-light">Uncertainty</span>
+                                <figure class="image is-4by3">
+                                    <img id="img-probs" src="./static/images/dauc/dauc_mid1_probs.png" alt="Heatmap">
+                                </figure>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="column is-6">
                     <div class="box" style="height: 100%;">
-                        <canvas id="causalChart" style="max-height: 300px;"></canvas>
+                        <canvas id="causalChart" style="max-height: 250px;"></canvas>
                         <br>
-                        <label class="label has-text-centered">Perturbation Step: <span id="step-label">0%</span></label>
-                        <input id="step-slider" class="slider is-fullwidth is-large is-circle" step="10" min="0" max="100" value="0" type="range" oninput="updateVisualization(this.value)">
+                        <label class="label has-text-centered">Perturbation Step: <span id="step-label">1</span></label>
+                        <input id="step-slider" class="slider-custom is-fullwidth is-large is-circle" step="1" min="1"
+                            max="24" value="1" type="range" oninput="updateVisualization(this.value)">
                         <div class="columns is-mobile is-size-7 has-text-grey">
-                            <div class="column is-half has-text-left">0%</div>
-                            <div class="column is-half has-text-right">100%</div>
-                        </div>
-                        <div class="content is-small has-text-centered">
-                            <p id="metric-insight" class="is-italic">Removing top relevant pixels causes a sharp drop in segmentation quality.</p>
+                            <div class="column is-half has-text-left">1 (Start)</div>
+                            <div class="column is-half has-text-right">24 (End)</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="columns is-centered">
-                <div class="column is-full">
-                    <div class="box has-text-centered">
-                        <h4 class="title is-5">Perturbed Support Set</h4>
-                        <p class="subtitle is-6 has-text-grey">Visualizing the impact on the 5 support images</p>
-                        
-                        <figure class="image">
-                            <img id="dynamic-support-img" src="./static/images/dauc/support_0.png" alt="Perturbed Support" style="max-height: 300px; width: auto; margin: 0 auto;">
+            <div class="box">
+                <h4 class="title is-5 has-text-centered">Perturbed Support Set</h4>
+                <p class="subtitle is-6 has-text-centered has-text-grey is-size-7">Shots 1 - 5</p>
+
+                <div class="columns is-mobile is-variable is-1">
+                    <div class="column">
+                        <figure class="image"><img id="img-shot0" src="./static/images/dauc/dauc_mid1_shot0.png">
+                        </figure>
+                    </div>
+                    <div class="column">
+                        <figure class="image"><img id="img-shot1" src="./static/images/dauc/dauc_mid1_shot1.png">
+                        </figure>
+                    </div>
+                    <div class="column">
+                        <figure class="image"><img id="img-shot2" src="./static/images/dauc/dauc_mid1_shot2.png">
+                        </figure>
+                    </div>
+                    <div class="column">
+                        <figure class="image"><img id="img-shot3" src="./static/images/dauc/dauc_mid1_shot3.png">
+                        </figure>
+                    </div>
+                    <div class="column">
+                        <figure class="image"><img id="img-shot4" src="./static/images/dauc/dauc_mid1_shot4.png">
                         </figure>
                     </div>
                 </div>
             </div>
-
         </div>
     </section>
 
+<section class="section">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3">Quantitative Benchmark</h2>
+            <div class="content">
+                <p>
+                    We evaluated our method against state-of-the-art attribution methods.
+                    Below are the results on COCO-20i and Pascal-5i datasets using DCAMA and DMTNet models in 1-way 5-shot setting.
+                    Refer to the paper for more details and results.
+                </p>
+            </div>
+
+            <div class="tabs is-centered is-toggle is-rounded is-small">
+                <ul>
+                    <li class="is-active" id="tab-coco" onclick="openDataset(event, 'coco-table')">
+                        <a>
+                            <span class="icon is-small"><i class="fas fa-images"></i></span>
+                            <span>COCO-20<sup>i</sup></span>
+                        </a>
+                    </li>
+                    <li id="tab-pascal" onclick="openDataset(event, 'pascal-table')">
+                        <a>
+                            <span class="icon is-small"><i class="fas fa-paw"></i></span>
+                            <span>Pascal-5<sup>i</sup></span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="box" style="overflow-x: auto; padding: 0; border: 1px solid #dbdbdb;">
+                
+                <table id="coco-table" class="table is-striped is-hoverable is-fullwidth results-table" style="margin-bottom: 0;">
+                    <thead>
+                        <tr class="header-labels">
+                            <th style="min-width: 150px;">Method</th>
+                            <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
+                            <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
+                            <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
+                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">(Conf)</span></th>
+                            <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="model-header"><th colspan="7">Model: DCAMA</th></tr>
+                        
+                        <tr><td>Random</td><td>47.50</td><td>46.85</td><td>0.65</td><td>43.36</td><td>41.42</td><td>31.62</td></tr>
+                        <tr><td>Gaussian Noise</td><td>52.32</td><td>15.46</td><td>36.86</td><td>53.80</td><td>31.08</td><td>17.71</td></tr>
+                        <tr><td>Saliency</td><td>52.02</td><td>41.10</td><td>10.92</td><td>44.97</td><td>37.01</td><td>23.73</td></tr>
+                        <tr><td>Integrated Grad.</td><td>49.23</td><td>45.97</td><td>3.27</td><td>45.63</td><td>34.18</td><td>22.25</td></tr>
+                        <tr><td>Guided IG</td><td>50.77</td><td>45.10</td><td>5.67</td><td>51.25</td><td>30.17</td><td>21.65</td></tr>
+                        <tr><td>Blur IG</td><td>52.40</td><td>41.63</td><td>10.78</td><td>44.25</td><td>36.69</td><td>22.84</td></tr>
+                        <tr><td>XRAI</td><td>54.45</td><td>38.72</td><td>15.73</td><td>51.98</td><td>26.59</td><td>12.08</td></tr>
+                        <tr><td>Deep Lift</td><td>49.78</td><td>48.51</td><td>1.27</td><td>44.80</td><td>36.67</td><td>24.07</td></tr>
+                        <tr><td>LIME</td><td>53.18</td><td>48.44</td><td>4.73</td><td>47.98</td><td>32.44</td><td>15.29</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>54.85</td><td>28.26</td><td>26.59</td><td>60.82</td><td>17.41</td><td><b>8.85</b></td></tr>
+                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>52.32</td><td>15.06</td><td><b>37.26</b></td><td><b>62.60</b></td><td><b>16.43</b></td><td>12.27</td></tr>
+                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>53.24</td><td>23.77</td><td>29.48</td><td>60.49</td><td>19.40</td><td>13.67</td></tr>
+
+                        <tr class="model-header"><th colspan="7">Model: DMTNet</th></tr>
+
+                        <tr><td>Random</td><td>21.21</td><td>20.98</td><td>0.23</td><td>60.36</td><td>24.93</td><td>31.88</td></tr>
+                        <tr><td>Gaussian Noise</td><td>39.08</td><td>15.71</td><td>23.37</td><td>59.35</td><td>20.69</td><td>13.26</td></tr>
+                        <tr><td>Saliency</td><td>36.51</td><td>26.79</td><td>9.72</td><td>63.09</td><td>21.05</td><td>15.77</td></tr>
+                        <tr><td>Integrated Grad.</td><td>26.25</td><td>19.47</td><td>6.78</td><td>62.51</td><td>21.63</td><td>20.32</td></tr>
+                        <tr><td>Blur IG</td><td>35.04</td><td>20.32</td><td>14.72</td><td>62.17</td><td>21.54</td><td>20.20</td></tr>
+                        <tr><td>XRAI</td><td>38.19</td><td>26.55</td><td>11.64</td><td>68.42</td><td>16.48</td><td>10.73</td></tr>
+                        <tr><td>LIME</td><td>36.83</td><td>32.44</td><td>4.39</td><td><b>70.72</b></td><td>19.20</td><td>11.36</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>40.10</td><td>17.09</td><td>23.01</td><td>67.30</td><td>10.53</td><td>4.49</td></tr>
+                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>40.52</td><td>16.38</td><td><b>24.14</b></td><td>67.23</td><td><b>9.95</b></td><td><b>3.10</b></td></tr>
+                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>38.85</td><td>18.81</td><td>20.03</td><td>67.16</td><td>10.49</td><td>3.72</td></tr>
+                    </tbody>
+                </table>
+
+                <table id="pascal-table" class="table is-striped is-hoverable is-fullwidth results-table" style="display:none; margin-bottom: 0;">
+                    <thead>
+                        <tr class="header-labels">
+                            <th style="min-width: 150px;">Method</th>
+                            <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
+                            <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
+                            <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
+                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">(Conf)</span></th>
+                            <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="model-header"><th colspan="7">Model: DCAMA</th></tr>
+                        
+                        <tr><td>Random</td><td>71.35</td><td>70.77</td><td>0.59</td><td>41.71</td><td>55.24</td><td>33.42</td></tr>
+                        <tr><td>Gaussian Noise</td><td>74.67</td><td>23.36</td><td>51.31</td><td>55.32</td><td>35.65</td><td>15.86</td></tr>
+                        <tr><td>Saliency</td><td>72.99</td><td>66.73</td><td>6.27</td><td>44.32</td><td>46.42</td><td>24.46</td></tr>
+                        <tr><td>Integrated Grad.</td><td>72.38</td><td>70.22</td><td>2.16</td><td>42.94</td><td>45.01</td><td>23.26</td></tr>
+                        <tr><td>Guided IG</td><td>71.74</td><td>70.35</td><td>1.39</td><td>49.08</td><td>42.53</td><td>23.19</td></tr>
+                        <tr><td>Blur IG</td><td>73.82</td><td>65.80</td><td>8.01</td><td>42.23</td><td>46.86</td><td>21.53</td></tr>
+                        <tr><td>XRAI</td><td>75.52</td><td>60.98</td><td>14.55</td><td>56.12</td><td>26.25</td><td>8.55</td></tr>
+                        <tr><td>Deep Lift</td><td>72.72</td><td>71.66</td><td>1.06</td><td>44.19</td><td>45.82</td><td>22.83</td></tr>
+                        <tr><td>LIME</td><td>74.77</td><td>72.20</td><td>2.57</td><td>49.19</td><td>36.71</td><td>13.40</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>76.23</td><td>46.34</td><td>29.89</td><td>66.82</td><td>13.78</td><td><b>5.72</b></td></tr>
+                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>73.16</td><td>21.19</td><td><b>51.97</b></td><td><b>67.91</b></td><td><b>13.71</b></td><td>7.09</td></tr>
+                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>75.46</td><td>45.45</td><td>30.01</td><td>66.60</td><td>13.93</td><td>7.82</td></tr>
+
+                        <tr class="model-header"><th colspan="7">Model: DMTNet</th></tr>
+
+                        <tr><td>Random</td><td>29.01</td><td>28.46</td><td>0.55</td><td>60.35</td><td>33.89</td><td>46.01</td></tr>
+                        <tr><td>Gaussian Noise</td><td>54.53</td><td>24.41</td><td>30.12</td><td>59.90</td><td>33.24</td><td>31.00</td></tr>
+                        <tr><td>Saliency</td><td>52.43</td><td>41.22</td><td>11.21</td><td>64.85</td><td>29.85</td><td>25.49</td></tr>
+                        <tr><td>Integrated Grad.</td><td>37.13</td><td>29.08</td><td>8.05</td><td>63.99</td><td>30.31</td><td>33.07</td></tr>
+                        <tr><td>Blur IG</td><td>47.83</td><td>33.82</td><td>14.01</td><td>63.62</td><td>29.77</td><td>33.13</td></tr>
+                        <tr><td>XRAI</td><td>55.82</td><td>45.72</td><td>10.09</td><td>69.78</td><td>20.03</td><td>12.88</td></tr>
+                        <tr><td>LIME</td><td>54.76</td><td>49.80</td><td>4.96</td><td><b>70.56</b></td><td>23.46</td><td>12.43</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>58.16</td><td>28.81</td><td>29.35</td><td>66.80</td><td>13.34</td><td>5.32</td></tr>
+                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>58.47</td><td>26.87</td><td><b>31.60</b></td><td>66.94</td><td><b>12.78</b></td><td><b>4.62</b></td></tr>
+                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>57.58</td><td>35.68</td><td>21.90</td><td>68.05</td><td>13.16</td><td>6.38</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+    </section>
 
     <section class="section" id="BibTeX">
         <div class="container is-max-desktop content">
@@ -351,8 +727,8 @@
                                 Commons Attribution-ShareAlike 4.0 International License</a>.
                         </p>
                         <p>
-                            This website uses the <a
-                                href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> template.
+                            This website uses the <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a>
+                            template.
                         </p>
                     </div>
                 </div>
