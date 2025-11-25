@@ -7,7 +7,7 @@
 *Few-Shot Semantic Segmentation meets Explainability*
 
 [![Website](https://img.shields.io/badge/Website-Visit-orange.svg)](https://pasqualedem.github.io/AffinityExplainer/)
-[![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org)
+[![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2511.18163)
 [![Demo](https://img.shields.io/badge/Demo-Launch-blue.svg)](#one-line-demo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
