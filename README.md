@@ -140,11 +140,13 @@ These visualizations demonstrate how support pixels contribute to query segmenta
 If you find AffinityExplainer useful in your research, please consider citing our paper:
 
 ```bibtex
-@article{yourname2024affinity,
-  title={Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design},
-  author={Your Name and Co-authors},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2024}
+@misc{marinisMatchingBasedFewShotSemantic2025,
+	title = {Matching-{Based} {Few}-{Shot} {Semantic} {Segmentation} {Models} {Are} {Interpretable} by {Design}},
+	url = {http://arxiv.org/abs/2511.18163},
+	doi = {10.48550/arXiv.2511.18163},
+	publisher = {arXiv},
+	author = {Marinis, Pasquale De and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
+	year = {2025},
 }
 ```
 
