@@ -38,6 +38,6 @@ parameters:
 
 other_grids:
   - explainer:
-    name: [signed_affinity]
-    mask_dilation_radius: [1, 3, 5]
-    mask_dilation_kernel: [3, 5, 7]
+      name: [signed_affinity]
+      mask_dilation_radius: [1, 3, 5]
+      mask_dilation_kernel: [3, 5, 7]
