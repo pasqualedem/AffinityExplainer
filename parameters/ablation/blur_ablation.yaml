@@ -1,0 +1,46 @@
+grid: AblationBlur
+
+parameters:
+  model: [dcama]
+  explainer:
+    name: [signed_affinity]
+    mask_blur_kernel_size: [21, 31, 51, 71, 101]
+    mask_blur_sigma: [5, 10, 15, 20, 30, 50]
+
+  explanation_masking: [logits]
+  # metric_masking: [all]
+  log_frequency: [50]
+  disable_dauc: [True]
+  
+  metric:
+    n_steps: [1]
+    substrate_fn: [zero]
+    percentage: [0.01]
+    measure: [miou]
+    loss: [True]
+    skip_empty: [True]
+
+    
+  dataset: # parameters depending on the class you defined for the dataset
+    datasets:
+      val_pascal5i_N1K1_100:
+        name: [pascal]
+        data_dir: &instance_dir [data/pascal]
+        split: ["val"]
+        val_fold_idx: [null]
+        n_folds: [4]
+        n_shots: [1]
+        n_ways: [1]
+        do_subsample: [False]
+        val_num_samples: [100]
+        maintain_gt_shape: [False]
+    common:
+      remove_small_annotations: [True]
+      ignore_borders: [True]
+      custom_preprocess: [False]
+  dataloader:
+    num_workers: [16]
+    batch_size: [1]
+    csv_folder: [data_csv]
+
+other_grids:

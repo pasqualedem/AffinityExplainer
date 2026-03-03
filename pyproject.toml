@@ -8,9 +8,9 @@ dependencies = [
     "captum>=0.8.0",
     "easydict>=1.13",
     "einops>=0.8.1",
+    "gdown>=5.2.0",
     "ipykernel>=6.29.5",
     "lovely-tensors>=0.1.18",
-    "mmcv>=2.2.0",
     "opencv-python>=4.11.0.86",
     "optuna>=4.3.0",
     "plotly>=6.0.1",
@@ -31,3 +31,11 @@ dependencies = [
     "transformers>=4.51.3",
     "wandb>=0.20.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["affex*"]
+
+
+[project.scripts]
+app = "affex.app:launch"

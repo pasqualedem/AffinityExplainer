@@ -21,12 +21,10 @@ import plotly.graph_objects as go
 from affex.explainer import EXPLAINER_REGISTRY, build_explainer
 from affex.explainer.affinity import get_explanation_mask
 from affex.utils.segmentation import create_rgb_segmentation, unnormalize
+from affex.utils.torch import to_device, torch_dict_load, torch_dict_save
 from affex.utils.utils import (
     ResultDict,
     StrEnum,
-    torch_dict_load,
-    torch_dict_save,
-    to_device,
 )
 from affex.models import SUPPORTED_MODELS, build_model_preconfigured
 from affex.data import get_dataloaders, get_preprocessing, get_testloaders

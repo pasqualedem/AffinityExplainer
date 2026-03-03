@@ -47,13 +47,13 @@ def dcama_preprocess_attentions(attentions):
 
 
 MODEL_EXPLAINER_REGISTRY = {
-    DMTNetMultiClass: dmtnet_preprocess_attentions,
-    DCAMAMultiClass: dcama_preprocess_attentions,
+    DMTNetMultiClass.__name__: dmtnet_preprocess_attentions,
+    DCAMAMultiClass.__name__: dcama_preprocess_attentions,
 }
 
 
 def preprocess_attentions(model, attentions):
-    return MODEL_EXPLAINER_REGISTRY[model.__class__](attentions)
+    return MODEL_EXPLAINER_REGISTRY[model.__class__.__name__](attentions)
 
 
 def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="logits"):
@@ -101,7 +101,7 @@ class AffinityExplainer:
             explanation_size = (explanation_size, explanation_size)
             
         self.explanation_size = explanation_size
-        if not any(isinstance(model, cls) for cls in MODEL_EXPLAINER_REGISTRY.keys()):
+        if not any(model.__class__.__name__ == cls for cls in MODEL_EXPLAINER_REGISTRY.keys()):
             raise ValueError(
                 f"Model {model.__class__.__name__} is not supported for explanations. Supported models: {list(MODEL_EXPLAINER_REGISTRY.keys())}"
             )

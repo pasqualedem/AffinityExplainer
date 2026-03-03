@@ -1,79 +1,179 @@
-# FSSAffinityExplainer
+# <img src="imgs/icon.svg" alt="icon" width="40" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
 
+<div align="center">
 
-## Download the dataset
+![AffinityExplainer Framework](imgs/FSSAffex.svg)
 
-Script:
+*Few-Shot Semantic Segmentation meets Explainability*
+
+[![Website](https://img.shields.io/badge/Website-Visit-orange.svg)](https://pasqualedem.github.io/AffinityExplainer/)
+[![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2511.18163)
+[![Demo](https://img.shields.io/badge/Demo-Launch-blue.svg)](#one-line-demo)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+[Installation](#installation) • [Quick Start](#one-line-demo) • [Datasets](#datasets) • [Reproduction](#reproduce-results) • [Examples](#examples)
+
+</div>
+
+---
+
+## Overview
+
+**AffinityExplainer** is a comprehensive framework designed to interpret matching-based few-shot semantic segmentation models. By extracting and visualizing pixel-level contributions from support images, AffinityExplainer reveals how these models make predictions, providing unprecedented transparency into their decision-making process.
+
+This repository accompanies our paper:
+
+> **"Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design"**
+
+### Key Features
+
+- 🔍 **Pixel-Level Attribution**: Extract the contribution of each support pixel to final predictions
+- 📊 **Interactive Visualizations**: Comprehensive tools for analyzing model behavior
+- ⚡ **One-Line Deployment**: Run demos instantly with minimal setup
+- 🎯 **Reproducible Research**: Complete scripts for all paper experiments
+
+---
+
+## One-Line Demo
+
+Experience AffinityExplainer instantly without any installation:
 
 ```bash
-wget https://www.phenobench.org/data/PhenoBench-v110.zip
-unzip PhenoBench-v110.zip
+uvx --from https://github.com/pasqualedem/AffinityExplainer app
 ```
 
-EVICAN
-https://paperswithcode.com/sota/cell-segmentation-on-evican
+> **💡 Requirements**: Only [uv](https://docs.astral.sh/uv/) is needed to run this command
 
-Nucleus
-https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-3332-1
+This launches an interactive web application where you can explore the interpretability capabilities of matching-based few-shot segmentation models.
+
+You can also run the demo locally after [installation](#installation):
 
 ```bash
-cd data
-kaggle competitions download -c data-science-bowl-2018
-unzip data-science-bowl-2018.zip -d data-science-bowl
-unzip data-science-bowl/stage1_train.zip -d Nucleus
+streamlit run affex/app.py
 ```
 
-Pothole Mix
-https://data.mendeley.com/datasets/kfth5g2xk3/2
+---
 
-Lab2Wild
-https://www.kaggle.com/datasets/sergeynesteruk/apple-rotting-segmentation-problem-in-the-wild/code
+## Installation
 
-KVASIR
-https://datasets.simula.no/kvasir/
+We use [uv](https://docs.astral.sh/uv/) for fast and reliable dependency management.
 
+### Prerequisites
+
+Ensure you have `uv` installed:
 
 ```bash
-cd data
-wget https://datasets.simula.no/downloads/kvasir-seg.zip
-unzip kvasir-seg.zip
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-LungCancer
+### Setup Environment
+
+Clone the repository and install dependencies:
+
 ```bash
-cd data
-wget https://prod-dcd-datasets-cache-zipfiles.s3.eu-west-1.amazonaws.com/5rr22hgzwr-1.zip
-unzip 5rr22hgzwr-1.zip
-mv "lungcancer/Lung cancer segmentation dataset with Lung-RADS class/"* lungcancer
-rm -r "lungcancer/Lung cancer segmentation dataset with Lung-RADS class/"
+git clone https://github.com/pasqualedem/AffinityExplainer.git
+cd AffinityExplainer
+uv sync
+source .venv/bin/activate
 ```
 
-WeedMap
+---
+
+## Datasets
+
+AffinityExplainer supports PASCAL VOC12 and COCO datasets for few-shot semantic segmentation experiments.
+
+### Download PASCAL VOC12
+
 ```bash
-mkdir data/Weedmap
-cd data/WeedMap
-# Download the zip
-unzip 0_rotations_processed_003_test.zip
+bash scripts/download_pascal.sh
 ```
 
-ISIC
+### Download COCO
+
 ```bash
-mkdir data/ISIC
-cd data/ISIC
-wget https://isic-challenge-data.s3.amazonaws.com/2019/ISIC_2019_Training_GroundTruth.csv
-wget https://isic-challenge-data.s3.amazonaws.com/2018/ISIC2018_Task1-2_Training_Input.zip
-wget https://isic-challenge-data.s3.amazonaws.com/2018/ISIC2018_Task1_Training_GroundTruth.zip
-unzip ISIC2018_Task1-2_Training_Input.zip
-unzip ISIC2018_Task1_Training_GroundTruth.zip
+bash scripts/download_coco.sh
 ```
 
-Industrial
+The datasets will be automatically organized in the appropriate directory structure for use with the framework.
+
+## Models
+
+AffinityExplainer supports DCAMA and DMTNet few-shot segmentation models. Download pre-trained weights using the scripts below:
+
 ```bash
-mkdir data/Industrial
-cd data/Industrial
-wget https://download.scidb.cn/download?fileId=6396c900bae2f1393c118ada -O data.zip
-wget https://download.scidb.cn/download?fileId=6396c900bae2f1393c118ad9 -O data.json
-unzip data.zip
-mv data/* .
-rm -r data
+bash scripts/download_dcama.sh
+bash scripts/download_dmtnet.sh
 ```
+
+---
+
+## Reproduce Results
+
+All experiments and ablation studies from the paper can be reproduced using the provided scripts in the `scripts/` directory.
+
+### Running Experiments
+
+Each line in `scripts/experiments.sh` corresponds to a specific experiment configuration:
+
+```bash
+# Example: Run COCO 1-shot experiment
+python main.py grid --parameters parameters/coco/cut_iauc_miou_N1K1.yaml
+```
+
+---
+
+## Examples
+
+### Visualization Gallery
+
+Below are example interpretability visualizations generated by AffinityExplainer on the DCAMA model:
+
+![AffinityExplainer Examples](imgs/FSSAffex_examples-DCAMA.svg)
+
+These visualizations demonstrate how support pixels contribute to query segmentation, revealing the matching patterns learned by few-shot models.
+
+---
+
+## Citation
+
+If you find AffinityExplainer useful in your research, please consider citing our paper:
+
+```bibtex
+@misc{marinisMatchingBasedFewShotSemantic2025,
+	title = {Matching-{Based} {Few}-{Shot} {Semantic} {Segmentation} {Models} {Are} {Interpretable} by {Design}},
+	url = {http://arxiv.org/abs/2511.18163},
+	doi = {10.48550/arXiv.2511.18163},
+	publisher = {arXiv},
+	author = {Marinis, Pasquale De and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
+	year = {2025},
+}
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+We thank the authors of the few-shot semantic segmentation models used in this work for making their code publicly available.
+
+---
+
+## Contact
+
+For questions, issues, or collaborations, please:
+- Open an issue on GitHub
+- Contact me via email
+
+---
+
+<div align="center">
+
+**Made with ❤️ for Interpretable AI**
+
+</div>

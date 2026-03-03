@@ -1,0 +1,7 @@
+mkdir -p checkpoints/dcama
+
+gdown 1NlX0IFgcrjdHmbTBrXrqAdzYJ7Ul9ux6
+mv swin_base_patch4_window12_384.pth checkpoints/dcama/swin_base_patch4_window12_384.pth
+
+gdown 1cEXdqRAjorPx30xnB0hwcNBwYN8JYcKx
+mv swin_fold0.pt checkpoints/dcama/swin_fold0.pt

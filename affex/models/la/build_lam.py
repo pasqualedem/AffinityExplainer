@@ -11,6 +11,7 @@ from huggingface_hub import PyTorchModelHubMixin
 from transformers.configuration_utils import PretrainedConfig
 
 from affex.models.la.lam import Lam
+from ...utils.torch import torch_dict_load
 
 from .common import LayerNorm2d
 from .common import SAM_EMBED_DIM
@@ -19,7 +20,7 @@ from .mask_decoder import AffinityDecoder, MaskDecoderLam, MultiLevelMaskDecoder
 from .prompt_encoder import MultiLevelPromptEncoder, PromptImageEncoder
 from .transformer import AffinityTransformer, TwoWayTransformer
 from .pyramids import PyramidNeck
-from ...utils.utils import load_state_dict, torch_dict_load
+from ...utils.utils import load_state_dict
 
 
 from ..build_encoder import (
