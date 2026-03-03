@@ -3,7 +3,7 @@ grid: DilationAblation
 parameters:
   model: [dcama]
   explainer:
-    name: [masked_affinity]
+    name: [masked_affinity, signed_affinity]
     
   explanation_masking: [logits]
   log_frequency: [50]
@@ -38,6 +38,6 @@ parameters:
 
 other_grids:
   - explainer:
-      name: [signed_affinity]
+      name: [signed_affinity, masked_affinity]
       mask_dilation_radius: [1, 3, 5]
       mask_dilation_kernel: [3, 5, 7]
