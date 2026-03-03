@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A IscrC_ARTURO
+#SBATCH -A IscrC_GEMEX
 #SBATCH -p boost_usr_prod
 #SBATCH --qos normal
 #SBATCH --time=24:00:00
@@ -12,5 +12,7 @@
 #SBATCH --job-name=FSSXAI
 #SBATCH --out=out/tfss.log
 #SBATCH --err=out/tfss.log
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=pasquale.demarinis@uniba.it
 
 srun ./slurm/launch_run_exe $@
