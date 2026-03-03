@@ -25,7 +25,7 @@ def build_dcama(
         pe=pe,
         voting=voting,
     )
-    state_dict = torch.load(model_checkpoint)
+    state_dict = torch.load(model_checkpoint, map_location="cpu")
     
     if pe:
         print("Using pe from state_dict")

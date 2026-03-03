@@ -1,4 +1,4 @@
-from .affinity import AffinityExplainer, MaskedAffinityExplainer, SignedAffinityExplainer
+from .affinity import AffinityExplainer, MaskedAffinityExplainer, SignedAffinityExplainer, ReverseSignedAffinityExplainer
 from .captum import CaptumExplainer
 from .random import GaussianNoiseMask, RandomExplainer
 from .saliency import SaliencyExplainer
@@ -16,6 +16,7 @@ EXPLAINER_REGISTRY = {
     "affinity": AffinityExplainer,
     "masked_affinity": MaskedAffinityExplainer,
     "signed_affinity": SignedAffinityExplainer,
+    "reverse_signed_affinity": ReverseSignedAffinityExplainer,
     "random": RandomExplainer,
     "gaussian_noise": GaussianNoiseMask,
     "lime": CaptumExplainer,

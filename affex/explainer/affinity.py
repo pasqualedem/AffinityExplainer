@@ -1,6 +1,7 @@
 import torch
 from einops import rearrange, repeat
 import torch.nn.functional as F
+import torchvision
 from torchvision.transforms import functional as TvT
 from torchvision.transforms.functional import resize
 from torchvision import transforms as T
@@ -10,6 +11,46 @@ from ..models.dcama import DCAMAMultiClass
 from ..models.dmtnet import DMTNetMultiClass
 from ..utils.utils import ResultDict
 
+
+def dilate_mask(mask: torch.Tensor, radius: int = 1, kernel_size: int = 3):
+    """
+    Dilata una maschera binaria senza smoothing.
+
+    Args:
+        mask: [B,H,W] binaria (0/1)
+        radius: numero di iterazioni di dilatazione
+        kernel_size: dimensione kernel per dilatazione (disco approssimato con ones)
+
+    Returns:
+        [B,H,W] maschera dilatata binaria
+    """
+    if mask.dim() != 3:
+        raise ValueError("Input must be [B,H,W]")
+
+    device = mask.device
+    mask = mask.float().unsqueeze(1)  # [B,1,H,W]
+
+    # Kernel pieno
+    kernel = torch.ones(1, 1, kernel_size, kernel_size, device=device)
+    padding = kernel_size // 2
+
+    for _ in range(radius):
+        dil = F.conv2d(mask, kernel, padding=padding)
+        mask = (dil > 0).float()  # ogni pixel con almeno un vicino attivo diventa 1
+
+    return mask.squeeze(1)
+    
+
+class DilateMaskTransform:
+    def __init__(self, radius: int = 1, kernel_size: int = 3):
+        self.radius = radius
+        self.kernel_size = kernel_size
+
+    def __call__(self, mask):
+        """
+        mask: Tensor [H,W] o [B,H,W]
+        """
+        return dilate_mask(mask, self.radius, self.kernel_size)
 
 
 def dmtnet_preprocess_attentions(attentions):
@@ -90,11 +131,18 @@ def get_explanation_mask(input_dict, gt, result, target_shape, masking_type="log
 
 
 class AffinityExplainer:
-    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, masking=False, mask_blur_kernel_size=31, mask_blur_sigma=50):
+    def __init__(self, model, aggregation_method="feature_ablation", explanation_size=None, use_softmax=True, masking=False, mask_blur_kernel_size=31, mask_blur_sigma=50, mask_dilation_radius=0, mask_dilation_kernel=None):
         self.model = model
         self.aggregation_method = aggregation_method
         self.use_softmax = use_softmax
         self.masking = masking
+        self.mask_dilation_radius = mask_dilation_radius
+        self.mask_dilation_kernel = mask_dilation_kernel
+        if self.mask_dilation_radius > 0 and self.mask_dilation_kernel is not None:
+            self.dilation = DilateMaskTransform(radius=self.mask_dilation_radius, kernel_size=self.mask_dilation_kernel)
+        else:
+            self.dilation = T.Lambda(lambda x: x)  # Identity transform if no dilation is applied
+        
         self.blur = T.GaussianBlur(kernel_size=mask_blur_kernel_size, sigma=mask_blur_sigma)
 
         if isinstance(explanation_size, int):
@@ -280,7 +328,7 @@ class AffinityExplainer:
                 )
                 
             if self.masking:
-                curr_mask = self.blur(mask)
+                curr_mask = self.blur(self.dilation(mask))
                 if self.masking == "sign":
                     curr_mask = 2 * curr_mask - 1
                 weighted_contrib = min_max_scale(weighted_contrib * curr_mask)
@@ -299,3 +347,8 @@ class MaskedAffinityExplainer(AffinityExplainer):
 class SignedAffinityExplainer(AffinityExplainer):
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs, masking="sign")
+        
+        
+class ReverseSignedAffinityExplainer(AffinityExplainer):
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs, masking="reverse_sign")
