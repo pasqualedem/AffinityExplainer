@@ -326,6 +326,12 @@ class AffinityExplainer:
                     interpolation=TvT.InterpolationMode.BILINEAR,
                     antialias=False,
                 )
+                if self.masking:
+                    mask = resize(
+                        mask,
+                        image_size,
+                        interpolation=TvT.InterpolationMode.NEAREST,
+                    )
                 
             if self.masking:
                 curr_mask = self.blur(self.dilation(mask))
