@@ -23,7 +23,7 @@ lt.monkey_patch()
 from .data import get_dataloaders
 from .data.utils import BatchKeys
 from .explainer import build_explainer
-from .metrics import FSSCausalMetric
+from .metrics import FSSCausalMetric, FSSImageCausalMetric
 from .models import build_model, build_model_preconfigured
 from .substitution import Substitutor
 from .utils.logger import get_logger
@@ -216,14 +216,17 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     evaluation_size = parameters.get("evaluation_size", image_size)
     metrics = {}
     
+    image_based_metrics = parameters.get("support_based_metrics", False)
+    causal_metric_class = FSSImageCausalMetric if image_based_metrics else FSSCausalMetric
+    
     if not parameters.get("disable_iauc", False):
-        metrics["iauc"] = FSSCausalMetric(
+        metrics["iauc"] = causal_metric_class(
                 model=model,
                 mode="ins",
                 **parameters["metric"]
             )
     if not parameters.get("disable_dauc", False):
-        metrics["dauc"] = FSSCausalMetric(
+        metrics["dauc"] = causal_metric_class(
             model=model,
             mode="del",
             **parameters["metric"]
@@ -320,3 +323,12 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
 
             scores_df = pd.DataFrame(metrics_dict)
             scores_df.to_csv(os.path.join(run_name, f"scores_{dataset_name}.csv"), index=False)
+            
+            curve_dict = {}
+            if "iauc_scores" in scores:
+                curve_dict["iauc_scores"] = scores["iauc_scores"].squeeze().tolist()
+            if "dauc_scores" in scores:
+                curve_dict["dauc_scores"] = scores["dauc_scores"].squeeze().tolist()
+                
+            curve_df = pd.DataFrame(curve_dict)
+            curve_df.to_csv(os.path.join(run_name, f"curve_mean_{dataset_name}.csv"), index=False)

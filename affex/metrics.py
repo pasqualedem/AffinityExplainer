@@ -453,3 +453,209 @@ class FSSCausalMetric(Metric):
         self.results = []
         self.mid_statuses = []
         self.computed_n_steps = None
+
+
+class FSSImageCausalMetric(Metric):
+
+    def __init__(
+        self,
+        model,
+        mode,
+        substrate_fn="zero",
+        loss=False,
+        measure="logits",
+        skip_empty=False,
+    ):
+        r"""Create image-level deletion/insertion metric instance.
+
+        Args:
+            model (nn.Module): Black-box model being explained.
+            mode (str): 'del' or 'ins'.
+            substrate_fn (func): a mapping from old images to new images.
+            measure (str): 'logits' or 'miou'.
+            loss (bool): if True, the metric will compute confidence/miou loss instead of xAUC.
+            skip_empty (bool): if True, the metric will skip empty step at the beginning.
+        """
+        super().__init__()
+        assert mode in ["del", "ins"]
+        self.model = model
+        self.mode = mode
+
+        assert measure in ["logits", "miou"], "measure must be either 'logits' or 'miou'."
+
+        self.loss = loss
+        self.measure = measure
+        self.skip_empty = skip_empty
+
+        self.substrate_fn = get_substrate_fn(substrate_fn)
+        self.reduce = lambda x: torch.mean(x, dim=-1)
+
+        self.mid_statuses = None
+        self.xauc = None
+        self.scores = None
+        self.results = []
+
+    def get_start_finish(self, input_dict):
+        images = input_dict[BatchKeys.IMAGES]
+        masks = input_dict[BatchKeys.PROMPT_MASKS]
+
+        query_image = images[:, 0:1]
+        support_images = images[:, 1:]
+
+        substrate_images = self.substrate_fn(support_images)
+        substrate_masks = self.substrate_fn(masks)
+
+        if self.mode == "del":
+            caption = "Deleting "
+            start_si = support_images.clone()
+            start_masks = masks.clone()
+            finish_si = substrate_images
+            finish_masks = substrate_masks
+        elif self.mode == "ins":
+            caption = "Inserting "
+            start_si = substrate_images
+            start_masks = substrate_masks
+            finish_si = support_images.clone()
+            finish_masks = masks.clone()
+
+        start = {
+            **input_dict,
+            BatchKeys.IMAGES: torch.cat([query_image, start_si], dim=1),
+            BatchKeys.PROMPT_MASKS: start_masks,
+        }
+        finish = {
+            **input_dict,
+            BatchKeys.IMAGES: torch.cat([query_image, finish_si], dim=1),
+            BatchKeys.PROMPT_MASKS: finish_masks,
+        }
+
+        return start, finish, caption
+
+    def finish_to_start(self, start, finish, img_indices):
+        """
+        Swaps entire support images and masks from 'finish' to 'start'.
+        """
+        b_indices = torch.arange(start[BatchKeys.IMAGES].shape[0])
+        
+        # Le support images partono dall'indice 1
+        start[BatchKeys.IMAGES][b_indices, 1 + img_indices] = finish[BatchKeys.IMAGES][b_indices, 1 + img_indices]
+        start[BatchKeys.PROMPT_MASKS][b_indices, img_indices] = finish[BatchKeys.PROMPT_MASKS][b_indices, img_indices]
+        
+        return start
+
+    def evaluate(self, input_dict, explanation, explanation_mask, gt=None):
+        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False, gt=gt):
+            pass
+        return {"auc": self.xauc, "scores": self.scores}
+
+    def evaluate_interactive(self, input_dict, explanation, explanation_mask, gt=None):
+        yield from self._evaluate_core(input_dict, explanation, explanation_mask, interactive=True, gt=gt)
+
+    def _evaluate_core(self, input_dict, explanation, explanation_mask, interactive, verbose=False, gt=None):
+        images = input_dict[BatchKeys.IMAGES]
+        masks = input_dict[BatchKeys.PROMPT_MASKS]
+        B, M, C, H, W = masks.shape
+        device = images.device
+        
+        self.mid_statuses = []
+
+        if self.measure == "miou":
+            if gt is None:
+                raise ValueError("Ground truth labels (gt) must be provided for miou computation.")
+            miou = MulticlassJaccardIndex(num_classes=C, ignore_index=-100, average=None).to(device)
+
+        # 1. Calcolo Saliency globale (Usa la media semplice su tutti i pixel come base pragmatica)
+        if explanation.dim() > 2:
+            img_saliency = explanation.view(B, M, -1).mean(dim=-1)
+        else:
+            img_saliency = explanation 
+
+        ordered_saliency, salient_order = torch.sort(img_saliency, dim=1, descending=True)
+
+        scores = torch.empty((M + 1, B))
+        start, finish, caption = self.get_start_finish(input_dict)
+
+# Baseline predictions per le top classes (salviamo i tensori completi)
+        with torch.no_grad():
+            result = self.model(to_device(input_dict, device), postprocess=False)
+            baseline_preds = F.softmax(result[ResultDict.LOGITS], dim=1)
+            baseline_preds_reduced = self.reduce(baseline_preds[:, :, explanation_mask])
+        top = torch.argmax(baseline_preds_reduced, -1)
+
+        # Iterazione su M + 1 stati
+        for i in tqdm(range(M + 1), desc=caption + "images", disable=not verbose):
+            
+            if not (i == 0 and self.skip_empty):
+                with torch.no_grad():
+                    result = self.model(to_device(start, device), postprocess=False)
+                    preds = F.softmax(result[ResultDict.LOGITS], dim=1)
+                
+                reduced_preds = self.reduce(preds[:, :, explanation_mask])
+                
+                if self.measure == "miou":
+                    seg = preds.argmax(dim=1)
+                    top_preds = repeat(miou(seg, gt)[1:].mean(dim=0, keepdim=True), "c -> b c", b=B)
+                    miou.reset()
+                else:
+                    top_preds = reduced_preds[:, top]
+                
+                scores[i] = top_preds
+            else:
+                # Fallback con le shape originali intatte per non rompere il plot
+                preds = baseline_preds
+                top_preds = baseline_preds_reduced[:, top] if self.measure != "miou" else torch.zeros((B, 1), device=device)
+
+            self.mid_statuses.append(
+                (
+                    i,
+                    start[BatchKeys.IMAGES].clone().cpu(),
+                    start[BatchKeys.PROMPT_MASKS].clone().cpu(),
+                    preds.clone().cpu(), # Ora la shape è SEMPRE quella completa [B, C, H, W]
+                    top_preds.clone().cpu()
+                )
+            )
+
+            # Preparazione per il prossimo step
+            if i < M:
+                img_indices = salient_order[:, i]
+                start = self.finish_to_start(start, finish, img_indices)
+
+            if interactive:
+                yield start, i, scores[: i + 1]
+
+        if self.skip_empty:
+            scores = scores[1:]
+
+        # Calcolo AUC e finalizzazione
+        if self.loss:
+            full_confidence = scores[-1].clone()
+            reduced_scores = scores[:-1]
+            if reduced_scores.shape[1] == 1:
+                self.xauc = (full_confidence - reduced_scores).item()
+            else:
+                self.xauc = torch.abs(full_confidence - auc(reduced_scores.mean(1))).item()
+        else:
+            self.xauc = auc(scores.mean(1))
+
+        self.scores = scores
+
+    def update(self, input_dict, explanation, explanation_mask, gt=None):
+        for _ in self._evaluate_core(input_dict, explanation, explanation_mask, interactive=False, gt=gt):
+            pass
+        self.results.append((self.xauc, self.scores))
+
+    def compute(self):
+        if not self.results:
+            raise ValueError("No results to compute.")
+        xaucs, scores = zip(*self.results)
+        notna_xaucs = [x for x in xaucs if not np.isnan(x)]
+        self.xauc = np.mean(notna_xaucs)
+        
+        self.scores = torch.stack(scores).mean(dim=0) 
+        return {"auc": self.xauc, "scores": self.scores, "aucs": xaucs}
+
+    def reset(self):
+        self.xauc = None
+        self.scores = None
+        self.results = []
+        self.mid_statuses = []
