@@ -49,7 +49,7 @@ This launches an interactive web application where you can explore the interpret
 You can also run the demo locally after [installation](#installation):
 
 ```bash
-streamlit run affex/app.py
+python -m streamlit run affex/app.py
 ```
 
 ---
