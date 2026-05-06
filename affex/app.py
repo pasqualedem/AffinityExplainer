@@ -17,6 +17,8 @@ from PIL import Image
 from io import BytesIO, StringIO
 import zipfile
 
+from affex.explainer import EXPLAINER_REGISTRY
+
 # --- Project Imports ---
 try:
     from affex.explainer.affinity import MODEL_EXPLAINER_REGISTRY
@@ -94,6 +96,7 @@ config_pascal = {
 config_dataloader = {
     "num_workers": 0,
     "batch_size": 1,
+    "csv_folder": "data_csv"
 }
 
 # --- Visual Styling Helpers ---
@@ -230,8 +233,20 @@ def show_overlay(rgb_images, logits, seg, gt):
         col1.image(tensor_to_heatmap(logits[0, 1].cpu()), caption="Logits Heatmap", use_container_width=True)
         col2.info("The logits heatmap represents the raw confidence of the model before argmax.")
 
-def build_and_run_explainer(parameters, model, input_dict, device):
-    name = "signed_affinity"
+def apply_custom_support_masks(batch, custom_masks: dict):
+    """Return a shallow copy of batch with PROMPT_MASKS replaced for given shot indices."""
+    if not custom_masks:
+        return batch
+    import copy as _copy
+    batch = _copy.copy(batch)
+    masks = batch[BatchKeys.PROMPT_MASKS].clone()
+    for shot_idx, mask_tensor in custom_masks.items():
+        masks[0, shot_idx, 1] = mask_tensor.float()
+    batch[BatchKeys.PROMPT_MASKS] = masks
+    return batch
+
+
+def build_and_run_explainer(name, parameters, model, input_dict, device, explanation_mask=None):
     explainer = build_explainer(name=name, model=model, params={}, device=device)
     n_ways = parameters.get("n_ways", 1)
     input_dict = to_device(input_dict, device)
@@ -248,11 +263,14 @@ def build_and_run_explainer(parameters, model, input_dict, device):
         antialias=False,
     )
     pred_seg = logits.argmax(dim=1)
-    
-    # FIX: Pass pred_seg (LongTensor) to one_hot, NOT logits (FloatTensor)
-    explanation_mask = (
-        F.one_hot(pred_seg, num_classes=n_ways + 1).permute(0, 3, 1, 2)[0].bool()[1]
-    )
+
+    if explanation_mask is None:
+        explanation_mask = (
+            F.one_hot(pred_seg, num_classes=n_ways + 1).permute(0, 3, 1, 2)[0].bool()[1]
+        )
+    else:
+        explanation_mask = explanation_mask.to(device)
+
     model_expl = explainer.explain(
         input_dict=input_dict,
         explanation_mask=explanation_mask,
@@ -301,7 +319,7 @@ def main():
     
     # Inject the base64 string into the source
     st.markdown(
-        f'# <img src="data:image/svg+xml;base64,{svg_base64}" alt="icon" width="64" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)',
+        f'# <img src="data:image/svg+xml;base64,{svg_base64}" alt="icon" width="64" style="vertical-align: middle;"/> AffinityExplainer',
         unsafe_allow_html=True
     )
     st.markdown("""
@@ -337,6 +355,14 @@ def main():
             cuda_count = torch.cuda.device_count()
             device_options = ["cpu"] + [f"cuda:{i}" for i in range(cuda_count)] if cuda_count > 0 else ["cpu"]
             device = st.selectbox("Compute Device", device_options, index=1 if cuda_count > 0 else 0)
+            
+        with st.expander("Explanation Settings", expanded=True):
+            name = st.selectbox("Explainer Method", EXPLAINER_REGISTRY.keys(), index=7)
+            mask_source = st.radio(
+                "Explanation Mask",
+                ["Prediction", "Ground Truth", "Custom Area"],
+                horizontal=True,
+            )
 
         with st.expander("Sample Selection"):
             sample_index = st.number_input("Sample Index", min_value=0, value=0)
@@ -357,7 +383,7 @@ def main():
         "dataset": config_coco if dataset == "coco" else config_pascal,
         "dataloader": config_dataloader,
         "model": {"name": model_name},
-        "explainer": {"name": "signed_affinity"},
+        "explainer": {"name": name},
     }
     for k in parameters["dataset"]["datasets"]:
         parameters["dataset"]["datasets"][k]["n_shots"] = num_shots
@@ -426,13 +452,70 @@ def main():
         
         visualize_episode_header(chosen)
 
+        # Custom support mask uploads
+        n_shots_ep = chosen[BatchKeys.PROMPT_MASKS].shape[1]
+        mask_H, mask_W = chosen[BatchKeys.PROMPT_MASKS].shape[-2:]
+        custom_support_masks: dict = {}
+        with st.expander("🖼️ Custom Support Masks (optional)"):
+            st.caption(
+                "Upload a binary image (white = foreground) to replace the support mask for any shot. "
+                "Leave empty to keep the dataset mask."
+            )
+            upload_cols = st.columns(n_shots_ep)
+            for i in range(n_shots_ep):
+                with upload_cols[i]:
+                    uploaded = st.file_uploader(
+                        f"Shot {i}", type=["png", "jpg", "jpeg"], key=f"supp_mask_{i}"
+                    )
+                    if uploaded is not None:
+                        mask_img = Image.open(uploaded).convert("L").resize(
+                            (mask_W, mask_H), Image.NEAREST
+                        )
+                        mask_arr = np.array(mask_img)
+                        mask_tensor = torch.from_numpy(mask_arr > 128)
+                        custom_support_masks[i] = mask_tensor
+                        tinted = tint_foreground(
+                            unnormalize(chosen[BatchKeys.IMAGES])[0, i + 1].clone().cpu(),
+                            mask_tensor,
+                        )
+                        st.image(tensor_to_pil(tinted), caption=f"Shot {i} (custom)", use_container_width=True)
+
+        # Mask source UI
+        explanation_mask_input = None
+        if mask_source == "Ground Truth":
+            explanation_mask_input = gt[0].bool()
+        elif mask_source == "Custom Area":
+            img_h, img_w = chosen[BatchKeys.IMAGES].shape[3], chosen[BatchKeys.IMAGES].shape[4]
+            st.markdown("**Custom Mask Area** — drag sliders to define a bounding box on the query image")
+            col_sliders, col_preview = st.columns([1, 1])
+            with col_sliders:
+                x1 = st.slider("Left (x1)", 0, img_w - 1, img_w // 4, key="mask_x1")
+                x2 = st.slider("Right (x2)", 0, img_w - 1, 3 * img_w // 4, key="mask_x2")
+                y1 = st.slider("Top (y1)", 0, img_h - 1, img_h // 4, key="mask_y1")
+                y2 = st.slider("Bottom (y2)", 0, img_h - 1, 3 * img_h // 4, key="mask_y2")
+            from PIL import ImageDraw
+            query_pil = tensor_to_pil(unnormalize(chosen[BatchKeys.IMAGES])[0, 0])
+            preview = query_pil.copy()
+            draw = ImageDraw.Draw(preview)
+            x_lo, x_hi = min(x1, x2), max(x1, x2)
+            y_lo, y_hi = min(y1, y2), max(y1, y2)
+            draw.rectangle([x_lo, y_lo, x_hi, y_hi], outline="red", width=3)
+            with col_preview:
+                st.image(preview, caption="Custom mask preview", use_container_width=True)
+            custom_mask = torch.zeros(img_h, img_w, dtype=torch.bool)
+            custom_mask[y_lo : y_hi + 1, x_lo : x_hi + 1] = True
+            explanation_mask_input = custom_mask
+
         if st.button("🚀 Run Inference & Explanation", type="primary", use_container_width=True):
             with st.status("Processing...", expanded=True) as status:
                 st.write("Running Model Forward Pass...")
                 try:
-                    result, logits, pred_seg = run_model_on_batch(model, chosen, gt)
+                    batch_to_run = apply_custom_support_masks(chosen, custom_support_masks)
+                    result, logits, pred_seg = run_model_on_batch(model, batch_to_run, gt)
                     st.write("Computing Affinity Explanation...")
-                    exp, explanation_mask = build_and_run_explainer(parameters, model, chosen, device)
+                    exp, explanation_mask = build_and_run_explainer(
+                        name, parameters, model, batch_to_run, device, explanation_mask_input
+                    )
                 except Exception as e:
                     error_box("Model Error", e)
                     st.stop()

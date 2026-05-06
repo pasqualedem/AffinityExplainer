@@ -1,11 +1,11 @@
-grid: DilationAblationMioU
+grid: BlurAblationMioU
 
 parameters:
   model: [dcama]
+  cache: [False]
   explainer:
-    name: [masked_affinity, signed_affinity]
-    mask_dilation_radius: [1, 3, 5]
-    mask_dilation_kernel: [3, 5, 7]
+    name: [signed_affinity]
+    mask_blur_kernel_size: [1]
     
   explanation_masking: [logits]
   log_frequency: [50]
