@@ -45,6 +45,16 @@ This repository accompanies our paper, accepted at **NeurIPS 2026**:
 
 ---
 
+## What the attributions look like
+
+One 1-shot episode per model, with AffEx next to the baselines. The prediction is drawn in
+red on the query, the ground truth in blue where it differs. Saliency and Blur IG do not
+apply to INSID3, which is training-free.
+
+![AffEx against the baselines on one episode per model](imgs/qualitative.png)
+
+---
+
 ## One-line demo
 
 ```bash
