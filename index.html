@@ -41,7 +41,6 @@
     <link rel="stylesheet" href="./static/css/slider.css">
     <link rel="stylesheet" href="./static/css/table.css">
     <link rel="stylesheet" href="./static/css/affex_anim.css">
-    <link rel="stylesheet" href="./static/css/affex_variants.css">
 
     <link rel="icon" href="./favicon.svg">
 
@@ -121,23 +120,19 @@
                             <span class="author-block"><sup>3</sup>Eindhoven University of Technology (TU/e)</span>
                         </div>
 
+                        <div class="is-size-5 publication-authors" style="margin-top: 0.75rem;">
+                            <span class="author-block"><strong>NeurIPS 2026</strong></span>
+                        </div>
+
                         <div class="column has-text-centered">
                             <div class="publication-links">
                                 <span class="link-block">
-                                    <a href="#" class="external-link button is-normal is-rounded is-dark">
+                                    <span class="button is-normal is-rounded is-static">
                                         <span class="icon">
                                             <i class="fas fa-file-pdf"></i>
                                         </span>
-                                        <span>Paper</span>
-                                    </a>
-                                </span>
-                                <span class="link-block">
-                                    <a href="#" class="external-link button is-normal is-rounded is-dark">
-                                        <span class="icon">
-                                            <i class="ai ai-arxiv"></i>
-                                        </span>
-                                        <span>arXiv</span>
-                                    </a>
+                                        <span>Paper, coming soon</span>
+                                    </span>
                                 </span>
                                 <span class="link-block">
                                     <a href="https://github.com/pasqualedem/AffinityExplainer"
@@ -178,25 +173,27 @@
                     <h2 class="title is-3">Abstract</h2>
                     <div class="content has-text-justified">
                         <p>
-                            Explainable AI (XAI) has made significant progress in conventional vision tasks, yet
-                            interpretability in Few-Shot Learning (FSL)—and specifically Few-Shot Semantic Segmentation
-                            (FSS)—remains underexplored. Existing FSS models are primarily evaluated on accuracy,
-                            leaving their internal reasoning opaque. This ambiguity makes it difficult to diagnose
-                            failures or select optimal support examples.
+                            Few-Shot Semantic Segmentation (FSS) models achieve strong performance in segmenting novel
+                            classes with minimal labeled examples, yet their decision-making processes remain largely
+                            opaque. While explainable AI has advanced significantly in standard computer vision tasks,
+                            interpretability in FSS remains underexplored despite its critical importance for
+                            understanding model behavior and guiding support set selection in data-scarce scenarios.
                         </p>
                         <p>
-                            In this paper, we introduce <strong>Affinity Explainer (AffEx)</strong>, a framework
-                            designed to interpret matching-based FSS models. By leveraging the inherent matching
-                            mechanisms (similarity scores) of these architectures, AffEx derives contribution maps that
-                            highlight which support pixels most strongly influence the query prediction. We propose
-                            three variants: <em>Unmasked</em>, <em>Masked</em>, and <em>Signed AffEx</em>.
+                            We argue that matching-based FSS models are <strong>interpretable by design</strong>: their
+                            core similarity computation between support and query features constitutes an inherent
+                            attribution mechanism. Our approach, <strong>Affinity Explainer (AffEx)</strong>, makes this
+                            intrinsic interpretability explicit by extracting attribution maps directly from matching
+                            scores at multiple feature levels, without requiring gradients or external perturbations.
                         </p>
                         <p>
-                            Furthermore, we extend the causal evaluation metrics <strong>Insertion/Deletion Area Under
-                                the Curve (IAUC/DAUC)</strong> to the FSS domain to rigorously quantify
-                            interpretability. Our extensive benchmark on COCO-20i and Pascal-5i demonstrates that AffEx
-                            provides actionable insights into model behavior and outperforms standard model-agnostic
-                            explanation methods.
+                            We extend standard interpretability evaluation metrics to the FSS domain and propose
+                            additional metrics to better capture the practical utility of explanations in few-shot
+                            scenarios. Comprehensive experiments on FSS benchmark datasets demonstrate that AffEx
+                            significantly outperforms adapted standard attribution methods, confirming that the matching
+                            mechanism itself is the key driver of interpretability. Qualitative analysis reveals
+                            structured, coherent attention patterns that align with model architectures and enable
+                            effective model diagnosis, laying the groundwork for interpretable FSS research.
                         </p>
                     </div>
                 </div>
@@ -210,40 +207,70 @@
                 <div class="columns is-centered has-text-centered">
                     <div class="column is-full-width">
                         <h2 class="title is-3">Qualitative Results</h2><br>
-                        <p>Visualizing attributions generated by AffEx compared to other methods (Saliency, Blur IG,
-                            XRAI).</p><br>
+                        <p>Every support image gets its own attribution map, so it is visible which shot the
+                            prediction leaned on and which one contributed nothing. Five-shot episodes from
+                            COCO-20<sup>i</sup> and Pascal-5<sup>i</sup>, two per slide. The query is on the left
+                            with the prediction in red, the ground truth in blue where it differs. In the maps, red
+                            marks the support pixels that carry the prediction and blue those that pull against it.</p>
+                        <br>
                         <div class="container">
                             <div class="swiper swiper-container">
                                 <div class="swiper-wrapper">
-                                    <div class="swiper-slide"
-                                        style="display:flex;align-items:center;justify-content:center;">
-                                        <img src="./static/images/FSSAffex_examples_website_1.svg"
-                                            alt="Qualitative Example 1"
-                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_dcama_1.webp"
+                                                alt="DCAMA attributions over a five-shot support set" />
+                                            <p class="slide-caption">DCAMA</p>
+                                        </div>
                                     </div>
-                                    <div class="swiper-slide"
-                                        style="display:flex;align-items:center;justify-content:center;">
-                                        <img src="./static/images/FSSAffex_examples_website_2.svg"
-                                            alt="Qualitative Example 2"
-                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_dcama_2.webp"
+                                                alt="DCAMA attributions over a five-shot support set" />
+                                            <p class="slide-caption">DCAMA</p>
+                                        </div>
                                     </div>
-                                    <div class="swiper-slide"
-                                        style="display:flex;align-items:center;justify-content:center;">
-                                        <img src="./static/images/FSSAffex_examples_website_3.svg"
-                                            alt="Qualitative Example 3"
-                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_dmtnet_1.webp"
+                                                alt="DMTNet attributions over a five-shot support set" />
+                                            <p class="slide-caption">DMTNet</p>
+                                        </div>
                                     </div>
-                                    <div class="swiper-slide"
-                                        style="display:flex;align-items:center;justify-content:center;">
-                                        <img src="./static/images/FSSAffex_examples_website_4.svg"
-                                            alt="Qualitative Example 4"
-                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_dmtnet_2.webp"
+                                                alt="DMTNet attributions over a five-shot support set" />
+                                            <p class="slide-caption">DMTNet</p>
+                                        </div>
                                     </div>
-                                    <div class="swiper-slide"
-                                        style="display:flex;align-items:center;justify-content:center;">
-                                        <img src="./static/images/FSSAffex_examples_website_5.svg"
-                                            alt="Qualitative Example 5"
-                                            style="width:100%;max-width:1200px;height:auto;object-fit:contain;" />
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_insid3_1.webp"
+                                                alt="INSID3 attributions over a five-shot support set" />
+                                            <p class="slide-caption">INSID3</p>
+                                        </div>
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_insid3_2.webp"
+                                                alt="INSID3 attributions over a five-shot support set" />
+                                            <p class="slide-caption">INSID3</p>
+                                        </div>
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_sansa_1.webp"
+                                                alt="SANSA attributions over a five-shot support set" />
+                                            <p class="slide-caption">SANSA</p>
+                                        </div>
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <div class="figure-card">
+                                            <img src="./static/images/qualitative_sansa_2.webp"
+                                                alt="SANSA attributions over a five-shot support set" />
+                                            <p class="slide-caption">SANSA</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="swiper-pagination"></div>
@@ -251,10 +278,18 @@
                                 <div class="swiper-button-prev"></div>
                             </div>
                         </div>
+                        <br><br>
+                        <h3 class="title is-5">Next to the other attribution methods</h3>
+                        <p class="is-size-6">One 1-shot episode per model. The gradient methods do not apply to
+                            INSID3, whose decision path is not differentiable.</p>
+                        <br>
+                        <div class="figure-card is-wide">
+                            <img src="./static/images/qualitative_methods.webp"
+                                alt="AffEx against the baselines, one episode per model" />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     </section>
 
@@ -275,193 +310,324 @@
 
                         <h4 class="title is-5">Core Mechanism</h4>
                         <p>
-                            Matching-based models compute dense correlations between <em>Query</em> and <em>Support</em>
-                            features. AffEx intercepts these raw similarity scores and transforms them into intuitive
-                            attribution maps through a three-step process:
+                            Matching-based models compare query and support features to decide what to segment.
+                            AffEx reads the scores that comparison produces and turns them into an attribution over
+                            the support pixels, in four steps.
                         </p>
                         <ol>
-                            <li><strong>ROI Averaging:</strong> The high-dimensional 4D correlation tensors (Query
-                                $\times$ Support) are collapsed into 2D maps by averaging scores over the relevant Query
-                                Region of Interest (ROI). This isolates the support features that are most similar to
-                                the target object in the query image.</li>
-                            <li><strong>Softmax Normalization:</strong> The raw scores are normalized into a probability
-                                distribution, allowing us to interpret them as relative contributions. High
-                                probabilities (red) indicate strong semantic correspondence, while low probabilities
-                                (blue) indicate irrelevance.</li>
-                            <li><strong>Feature Ablation & Aggregation:</strong> Since modern FSS models extract
-                                features at multiple depths, AffEx calculates <em>ablation weights</em> ($w_j$) to
-                                measure the importance of each layer. The final attribution map is a weighted sum of
-                                these multi-scale contributions.</li>
+                            <li><strong>Slice and average:</strong> the scores hold every query position against
+                                every support position of every shot. AffEx slices them at the region being explained
+                                and averages over it, leaving one map per support image.</li>
+                            <li><strong>Softmax:</strong> normalised over the whole support set, so the scores read as
+                                relative contributions.</li>
+                            <li><strong>Aggregation:</strong> one map per feature level, aggregated into one.</li>
+                            <li><strong>Support mask:</strong> dilated and smoothed, it sets the sign: positive on the
+                                object (red), negative outside it (blue). Without this step, the Unmasked variant.</li>
                         </ol>
 
-                        <h4 class="title is-5 has-text-centered">Process Visualization</h4>
-                        <p id="afx-caption" class="afx-caption">Initialize: Query (Cat) vs Support Set (Black cat, Dog)</p>
+                        <h4 class="title is-5 has-text-centered">How an attribution is built</h4>
+                        <p class="has-text-centered is-size-7 has-text-grey">Every panel below is the real output of
+                            one 3-shot COCO-20<sup>i</sup> episode of the class <em>person</em>, with INSID3 as the model.</p>
+                        <br>
 
                         <div id="affex-anim-container">
-                            <div class="afx-scaler">
-                                <div class="afx-stage">
-                                    <div class="afx-phase-container">
-                                        <div class="afx-phase-pill" id="afx-phase-label"></div>
+                            <div class="afx-stage">
+                                <svg class="afx-wires" aria-hidden="true">
+                                    <defs>
+                                        <marker id="afx-tip" viewBox="0 0 10 10" refX="9" refY="5"
+                                            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                                            <path d="M0 0 L10 5 L0 10 z" fill="#cdd6e3" />
+                                        </marker>
+                                    </defs>
+                                    <path class="afx-wire" id="afx-wire-query" marker-end="url(#afx-tip)" />
+                                    <path class="afx-wire" id="afx-wire-support" marker-end="url(#afx-tip)" />
+                                </svg>
+
+                                <div class="afx-inputs">
+                                    <p class="afx-col-title"><svg class="afx-title-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
+                                            <path d="M8 13.5 L11 10 L14 13.5 L16 11.5 L19 15" />
+                                            <circle cx="9" cy="8.5" r="1.6" class="afx-icon-dot" />
+                                        </svg><span>Query</span></p>
+                                    <div class="afx-panel" data-panel="query">
+                                        <img data-frame="plain" src="./static/images/anim/query.webp" alt="Query image" />
+                                        <img data-frame="pred" src="./static/images/anim/query_pred.webp" alt="Query with the predicted region in red" />
                                     </div>
+                                    <p class="afx-panel-label">the region to explain</p>
 
-                                    <div class="afx-column">
-                                        <div class="afx-label">Query</div>
-                                        <div class="afx-image-box">
-                                            🐈
-                                            <div class="afx-roi-overlay"></div>
-                                        </div>
-                                        <div class="afx-mini-stack">
-                                            <div class="afx-mini-layer"></div>
-                                            <div class="afx-mini-layer"></div>
-                                            <div class="afx-mini-layer"></div>
-                                        </div>
+                                    <p class="afx-col-title afx-spaced"><svg class="afx-title-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="2.5" y="7.5" width="12" height="12" rx="1.6" />
+                                            <path d="M6.5 4.5 H17.5 A2 2 0 0 1 19.5 6.5 V16" />
+                                            <path d="M10.5 4.5 H20.5" class="afx-icon-faint" />
+                                        </svg><span>Support set</span></p>
+                                    <div class="afx-support-row">
+                                            <div class="afx-support" data-support="1">
+                                                <div class="afx-panel" data-panel="shot1">
+                                                    <img data-frame="plain" src="./static/images/anim/support1.webp" alt="Support image 1" />
+                                                    <img data-frame="masked" src="./static/images/anim/support1_mask.webp" alt="Support image 1 with its mask" />
+                                                </div>
+                                                <p class="afx-panel-label">shot 1</p>
+                                            </div>
+                                            <div class="afx-support" data-support="2">
+                                                <div class="afx-panel" data-panel="shot2">
+                                                    <img data-frame="plain" src="./static/images/anim/support2.webp" alt="Support image 2" />
+                                                    <img data-frame="masked" src="./static/images/anim/support2_mask.webp" alt="Support image 2 with its mask" />
+                                                </div>
+                                                <p class="afx-panel-label">shot 2</p>
+                                            </div>
+                                            <div class="afx-support" data-support="3">
+                                                <div class="afx-panel" data-panel="shot3">
+                                                    <img data-frame="plain" src="./static/images/anim/support3.webp" alt="Support image 3" />
+                                                    <img data-frame="masked" src="./static/images/anim/support3_mask.webp" alt="Support image 3 with its mask" />
+                                                </div>
+                                                <p class="afx-panel-label">shot 3</p>
+                                            </div>
                                     </div>
+                                </div>
 
-                                    <div class="afx-process-zone">
-                                        <div class="afx-connector-layer">
-                                            <div class="afx-line afx-line-main"></div>
-                                            <div class="afx-line afx-line-vertical"></div>
-                                            <div class="afx-line afx-line-feed-top"></div>
-                                            <div class="afx-line afx-line-feed-bot"></div>
-                                            <div class="afx-line afx-line-right-top"></div>
-                                            <div class="afx-line afx-line-right-bot"></div>
-                                        </div>
-
-                                        <div class="afx-stack-wrapper" id="afx-stack-car">
-                                            <div class="afx-stack-label">Match Tensor</div>
-                                            <div class="afx-score-card afx-layer-3">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w3</div>
-                                            </div>
-                                            <div class="afx-score-card afx-layer-2">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w2</div>
-                                            </div>
-                                            <div class="afx-score-card afx-layer-1">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w1</div>
-                                            </div>
-                                        </div>
-
-                                        <div class="afx-stack-wrapper" id="afx-stack-plant">
-                                            <div class="afx-stack-label">Match Tensor</div>
-                                            <div class="afx-score-card afx-layer-3">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w3</div>
-                                            </div>
-                                            <div class="afx-score-card afx-layer-2">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w2</div>
-                                            </div>
-                                            <div class="afx-score-card afx-layer-1">
-                                                <div class="afx-tensor-face"></div>
-                                                <div class="afx-tensor-depth-1"></div>
-                                                <div class="afx-tensor-depth-2"></div>
-                                                <div class="afx-w-tag">w1</div>
-                                            </div>
+                                <div class="afx-middle">
+                                    <div class="afx-model-stage">
+                                        <div class="afx-model">
+                                            <svg class="afx-model-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <circle cx="5" cy="6" r="2.2" />
+                                                <circle cx="5" cy="18" r="2.2" />
+                                                <circle cx="12" cy="12" r="2.2" />
+                                                <circle cx="19" cy="7" r="2.2" />
+                                                <circle cx="19" cy="17" r="2.2" />
+                                                <path d="M7 7 L10 11 M7 17 L10 13 M14 11 L17 8 M14 13 L17 16" />
+                                            </svg>
+                                            <span>FSS Model</span>
                                         </div>
                                     </div>
-
-                                    <div class="afx-column" style="gap: 60px;">
-                                        <div>
-                                            <div class="afx-label">Support 1</div>
-                                            <div class="afx-image-box">
-                                                🐈‍⬛
-                                                <div class="afx-heatmap-overlay afx-heat-strong"></div>
+                                    <svg class="afx-drop" viewBox="0 0 24 34" aria-hidden="true">
+                                        <path d="M12 2 V22" />
+                                        <polygon points="12,32 6,20 18,20" />
+                                    </svg>
+                                    <p class="afx-col-title afx-title-scores"><svg class="afx-title-icon afx-title-icon-wide" viewBox="0 0 28 24" aria-hidden="true">
+                                            <rect x="10" y="2.5" width="15" height="11" rx="2" class="afx-icon-back" />
+                                            <rect x="6.5" y="6" width="15" height="11" rx="2" class="afx-icon-mid" />
+                                            <rect x="3" y="9.5" width="15" height="11" rx="2" class="afx-icon-front" />
+                                            <path d="M7.5 13 H13.5 M7.5 16 H13.5" class="afx-icon-faint" />
+                                        </svg><span>Matching scores</span></p>
+                                    <div class="afx-scores afx-arrow">
+                                        <svg class="afx-score-tensor" viewBox="0 0 34 30" aria-hidden="true">
+                                            <path d="M9 2 L31 2 L31 20 L9 20 Z" class="afx-score-back" />
+                                            <path d="M6 5 L28 5 L28 23 L6 23 Z" class="afx-score-mid" />
+                                            <path d="M3 8 L25 8 L25 26 L3 26 Z" class="afx-score-front" />
+                                        </svg>
+                                        <svg class="afx-score-tensor" viewBox="0 0 34 30" aria-hidden="true">
+                                            <path d="M9 2 L31 2 L31 20 L9 20 Z" class="afx-score-back" />
+                                            <path d="M6 5 L28 5 L28 23 L6 23 Z" class="afx-score-mid" />
+                                            <path d="M3 8 L25 8 L25 26 L3 26 Z" class="afx-score-front" />
+                                        </svg>
+                                        <svg class="afx-score-tensor" viewBox="0 0 34 30" aria-hidden="true">
+                                            <path d="M9 2 L31 2 L31 20 L9 20 Z" class="afx-score-back" />
+                                            <path d="M6 5 L28 5 L28 23 L6 23 Z" class="afx-score-mid" />
+                                            <path d="M3 8 L25 8 L25 26 L3 26 Z" class="afx-score-front" />
+                                        </svg>
+                                        <svg class="afx-score-tensor" viewBox="0 0 34 30" aria-hidden="true">
+                                            <path d="M9 2 L31 2 L31 20 L9 20 Z" class="afx-score-back" />
+                                            <path d="M6 5 L28 5 L28 23 L6 23 Z" class="afx-score-mid" />
+                                            <path d="M3 8 L25 8 L25 26 L3 26 Z" class="afx-score-front" />
+                                        </svg>
+                                    </div>
+                                    <div class="afx-region-stage">
+                                        <div class="afx-chip">
+                                            <img src="./static/images/anim/query_pred.webp" alt="The predicted region" />
+                                        </div>
+                                        <div class="afx-mask-node">sliced and averaged over the selected region</div>
+                                    </div>
+                                    <svg class="afx-drop afx-drop-second" viewBox="0 0 24 34" aria-hidden="true">
+                                        <path d="M12 2 V22" />
+                                        <polygon points="12,32 6,20 18,20" />
+                                    </svg>
+                                    <!-- INSID3 matches at a single level: these four panels are that one
+                                         attribution redrawn coarse to fine, standing in for what a multi-level
+                                         model such as DCAMA produces. -->
+                                    <div class="afx-levels">
+                                        <div class="afx-level-stack">
+                                            <div class="afx-level-cards">
+                                            <div class="afx-level" data-panel="level1_shot1" style="z-index: 1">
+                                                <img data-frame="map" src="./static/images/anim/level1_shot1.webp" alt="Level 1, shot 1" />
                                             </div>
-                                            <div class="afx-mini-stack">
-                                                <div class="afx-mini-layer"></div>
-                                                <div class="afx-mini-layer"></div>
-                                                <div class="afx-mini-layer"></div>
+                                            <div class="afx-level" data-panel="level2_shot1" style="z-index: 2">
+                                                <img data-frame="map" src="./static/images/anim/level2_shot1.webp" alt="Level 2, shot 1" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level3_shot1" style="z-index: 3">
+                                                <img data-frame="map" src="./static/images/anim/level3_shot1.webp" alt="Level 3, shot 1" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level4_shot1" style="z-index: 4">
+                                                <img data-frame="map" src="./static/images/anim/level4_shot1.webp" alt="Level 4, shot 1" />
+                                            </div>
+                                            </div>
+                                            <span class="afx-level-tag">shot 1</span>
+                                        </div>
+                                        <div class="afx-level-stack">
+                                            <div class="afx-level-cards">
+                                            <div class="afx-level" data-panel="level1_shot2" style="z-index: 1">
+                                                <img data-frame="map" src="./static/images/anim/level1_shot2.webp" alt="Level 1, shot 2" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level2_shot2" style="z-index: 2">
+                                                <img data-frame="map" src="./static/images/anim/level2_shot2.webp" alt="Level 2, shot 2" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level3_shot2" style="z-index: 3">
+                                                <img data-frame="map" src="./static/images/anim/level3_shot2.webp" alt="Level 3, shot 2" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level4_shot2" style="z-index: 4">
+                                                <img data-frame="map" src="./static/images/anim/level4_shot2.webp" alt="Level 4, shot 2" />
+                                            </div>
+                                            </div>
+                                            <span class="afx-level-tag">shot 2</span>
+                                        </div>
+                                        <div class="afx-level-stack">
+                                            <div class="afx-level-cards">
+                                            <div class="afx-level" data-panel="level1_shot3" style="z-index: 1">
+                                                <img data-frame="map" src="./static/images/anim/level1_shot3.webp" alt="Level 1, shot 3" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level2_shot3" style="z-index: 2">
+                                                <img data-frame="map" src="./static/images/anim/level2_shot3.webp" alt="Level 2, shot 3" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level3_shot3" style="z-index: 3">
+                                                <img data-frame="map" src="./static/images/anim/level3_shot3.webp" alt="Level 3, shot 3" />
+                                            </div>
+                                            <div class="afx-level" data-panel="level4_shot3" style="z-index: 4">
+                                                <img data-frame="map" src="./static/images/anim/level4_shot3.webp" alt="Level 4, shot 3" />
+                                            </div>
+                                            </div>
+                                            <span class="afx-level-tag">shot 3</span>
+                                        </div>
+                                    </div>
+                                    <svg class="afx-merge afx-arrow" viewBox="0 0 320 96" role="img"
+                                        aria-label="The level maps are aggregated into one attribution per shot">
+                                        <g class="afx-merge-line">
+                                            <path d="M40 4 L40 14 L280 14 L280 4" />
+                                            <path d="M120 4 L120 14" />
+                                            <path d="M200 4 L200 14" />
+                                            <path d="M160 14 L160 32" />
+                                            <path d="M160 64 L160 74" />
+                                            <path d="M60 86 L60 78 L260 78 L260 86" />
+                                            <path d="M160 74 L160 78" />
+                                        </g>
+                                        <rect x="112" y="32" width="96" height="32" rx="16" class="afx-merge-node" />
+                                        <text x="160" y="52" text-anchor="middle" class="afx-merge-label">aggregate</text>
+                                    </svg>
+                                    <div class="afx-out-row">
+                                        <div class="afx-out" data-support="1">
+                                            <div class="afx-panel" data-panel="out1">
+                                                <img data-frame="map" src="./static/images/anim/aggregate_shot1.webp" alt="Aggregated attribution, shot 1" />
                                             </div>
                                         </div>
+                                        <div class="afx-out" data-support="2">
+                                            <div class="afx-panel" data-panel="out2">
+                                                <img data-frame="map" src="./static/images/anim/aggregate_shot2.webp" alt="Aggregated attribution, shot 2" />
+                                            </div>
+                                        </div>
+                                        <div class="afx-out" data-support="3">
+                                            <div class="afx-panel" data-panel="out3">
+                                                <img data-frame="map" src="./static/images/anim/aggregate_shot3.webp" alt="Aggregated attribution, shot 3" />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <div>
-                                            <div class="afx-label">Support 2</div>
-                                            <div class="afx-image-box">
-                                                🐕
-                                                <div class="afx-heatmap-overlay afx-heat-weak"></div>
+                                    <div class="afx-mask-stage">
+                                        <div class="afx-mask-node">
+                                            <span class="afx-times">&times;</span> support mask
+                                            <span class="afx-sign">+ inside, &minus; outside</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="afx-final-row">
+                                        <div class="afx-final" data-support="1">
+                                            <div class="afx-panel" data-panel="fin1">
+                                                <img data-frame="map" src="./static/images/anim/final_shot1.webp" alt="AffEx attribution, shot 1" />
                                             </div>
-                                            <div class="afx-mini-stack">
-                                                <div class="afx-mini-layer"></div>
-                                                <div class="afx-mini-layer"></div>
-                                                <div class="afx-mini-layer"></div>
+                                            <p class="afx-panel-label">shot 1<span class="afx-tag">carries the most</span></p>
+                                        </div>
+                                        <div class="afx-final" data-support="2">
+                                            <div class="afx-panel" data-panel="fin2">
+                                                <img data-frame="map" src="./static/images/anim/final_shot2.webp" alt="AffEx attribution, shot 2" />
                                             </div>
+                                            <p class="afx-panel-label">shot 2</p>
+                                        </div>
+                                        <div class="afx-final" data-support="3">
+                                            <div class="afx-panel" data-panel="fin3">
+                                                <img data-frame="map" src="./static/images/anim/final_shot3.webp" alt="AffEx attribution, shot 3" />
+                                            </div>
+                                            <p class="afx-panel-label">shot 3</p>
                                         </div>
                                     </div>
                                 </div>
+
+                            </div>
+
+                            <p class="afx-caption" id="afx-caption"></p>
+                            <div class="afx-progress" id="afx-progress"></div>
+                            <div class="afx-controls">
+                                <button class="afx-btn" id="afx-btn-previous">Previous</button>
+                                <button class="afx-btn" id="afx-btn-play">Play</button>
+                                <button class="afx-btn" id="afx-btn-next">Next</button>
                             </div>
                         </div>
-                        <div class="afx-controls">
-                            <button class="afx-btn" disabled id="afx-btn-previous">Previous</button>
-                            <button class="afx-btn" id="afx-btn-next">Next</button>
-                            <button class="afx-btn reset" id="afx-btn-reset">Reset</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero is-light is-small">
+        <div class="hero-body">
+            <div class="container is-max-desktop">
+                <div class="columns is-centered">
+                    <div class="column is-full-width">
+                        <h2 class="title is-3">Diagnosing a wrong prediction</h2>
+                        <div class="content has-text-justified">
+                            <p>
+                                DCAMA is asked for the elephant and returns it, but paints several zebras as well.
+                                Accuracy alone says the episode failed; the attribution says why.
+                            </p>
                         </div>
 
-                        <br>
-                        <h4 class="title is-5">AffEx Variants</h4>
-                        <p>
-                            We propose three variants to handle different interpretability needs:
-                        </p>
-
-                        <div class="affex-variants-container">
-                            <!-- 1. Unmasked -->
-                            <div class="afx-card">
-                                <div class="afx-card-title">Unmasked AffEx</div>
-                                <div class="afx-visual-box">
-                                    <div class="afx-icon">🐈‍⬛</div>
-                                    <div class="afx-overlay afx-heat-unmasked"></div>
-                                </div>
-                                <div class="afx-desc">
-                                    Computes attributions using the full image context. Useful for identifying if
-                                    background clutter is distracting the model.
-                                    <br>
-                                    <span class="afx-math">A(I<sub>q</sub>, I<sub>s</sub>)</span>
-                                </div>
-                            </div>
-
-                            <!-- 2. Masked -->
-                            <div class="afx-card">
-                                <div class="afx-card-title">Masked AffEx</div>
-                                <div class="afx-visual-box">
-                                    <div class="afx-mask-guide"></div>
-                                    <div class="afx-icon">🐈‍⬛</div>
-                                    <div class="afx-overlay afx-heat-masked"></div>
-                                </div>
-                                <div class="afx-desc">
-                                    Strictly confines attention to the object mask. Applies Gaussian smoothing at
-                                    boundaries to prevent artifacts.
-                                    <br>
-                                    <span class="afx-math">A(I<sub>q</sub>, I<sub>s</sub>) &odot; M<sub>s</sub></span>
-                                </div>
-                            </div>
-
-                            <!-- 3. Signed -->
-                            <div class="afx-card">
-                                <div class="afx-card-title">Signed AffEx</div>
-                                <div class="afx-visual-box">
-                                    <div class="afx-icon">🐈‍⬛</div>
-                                    <div class="afx-overlay afx-heat-signed"></div>
-                                </div>
-                                <div class="afx-desc">
-                                    Models background as negative. Red regions contribute positively; Blue regions
-                                    (background) contribute negatively.
-                                    <br>
-                                    <span class="afx-math">A &middot; Sign(M<sub>s</sub>)</span>
-                                </div>
-                            </div>
+                        <div class="diag-row">
+                            <figure class="diag-panel">
+                                <img src="./static/images/diagnosis_before.webp" alt="The failing prediction: the elephant in magenta, zebras wrongly in red" />
+                                <figcaption>the prediction</figcaption>
+                            </figure>
+                            <figure class="diag-panel">
+                                <img src="./static/images/diag_pred_attr.webp" alt="Attribution taken over the predicted region" />
+                                <figcaption>attribution over the prediction</figcaption>
+                            </figure>
+                            <figure class="diag-panel">
+                                <img src="./static/images/diag_gt_attr.webp" alt="Attribution taken over the ground truth region" />
+                                <figcaption>attribution over the ground truth</figcaption>
+                            </figure>
+                            <figure class="diag-panel">
+                                <img src="./static/images/diag_mask.webp" alt="The support mask restricted to the elephant&rsquo;s back" />
+                                <figcaption>support mask, restricted</figcaption>
+                            </figure>
+                            <figure class="diag-panel">
+                                <img src="./static/images/diag_after.webp" alt="The prediction after the support mask is restricted" />
+                                <figcaption>the prediction after</figcaption>
+                            </figure>
                         </div>
 
+                        <div class="content has-text-justified">
+                            <ol>
+                                <li>The attribution taken over the <strong>prediction</strong> rests on the elephant's
+                                    face and back.</li>
+                                <li>The attribution taken over the <strong>ground truth</strong> rests on the back
+                                    alone.</li>
+                                <li>The difference points at the query, where the elephant's face is occluded. The face
+                                    is in the support mask but has nothing to match, and those unmatched features are
+                                    what the zebras pick up.</li>
+                                <li>Restricting the support mask to the back, circled in red, removes most of the zebra
+                                    false positives and keeps the elephant.</li>
+                            </ol>
+                            <p>
+                                No retraining and no gradient: reading the support set differently was enough to find
+                                the cause and act on it.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -581,9 +747,12 @@
             <h2 class="title is-3">Quantitative Benchmark</h2>
             <div class="content">
                 <p>
-                    We evaluated our method against state-of-the-art attribution methods.
-                    Below are the results on COCO-20i and Pascal-5i datasets using DCAMA and DMTNet models in 1-way 5-shot setting.
-                    Refer to the paper for more details and results.
+                    <strong>mIoULoss@$p$</strong> is how much segmentation quality is lost when the support set is
+                    reduced to the top $p$ of the pixels an attribution ranks highest: the lower, the more of the
+                    prediction those few pixels carry. Results are on COCO-20<sup>i</sup> and Pascal-5<sup>i</sup> in
+                    the 1-way setting, for four models spanning classical matching and recent pipelines built on vision
+                    foundation models. Best in bold, second best underlined. See the paper for the insertion and
+                    deletion curves and the remaining architectures.
                 </p>
             </div>
 
@@ -610,42 +779,57 @@
                     <thead>
                         <tr class="header-labels">
                             <th style="min-width: 150px;">Method</th>
-                            <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
-                            <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
-                            <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
-                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">@1%</span><br><span class="unit">(Conf)</span></th>
-                            <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
-                            <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
+                            <th colspan="2">1-shot</th>
+                            <th colspan="2">5-shot</th>
+                        </tr>
+                        <tr class="header-labels">
+                            <th></th>
+                            <th title="mIoU loss when only the top 1% of support pixels is kept">mIoULoss<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 5% of support pixels is kept">mIoULoss<br><span class="unit">@5%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 1% of support pixels is kept">mIoULoss<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 5% of support pixels is kept">mIoULoss<br><span class="unit">@5%</span> &darr;</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="model-header"><th colspan="7">DCAMA</th></tr>
-                        
-                        <tr><td>Random</td><td>47.50</td><td>46.85</td><td>0.65</td><td>43.36</td><td>41.42</td><td>31.62</td></tr>
-                        <tr><td>Gaussian Noise Mask</td><td>52.32</td><td>15.46</td><td>36.86</td><td>53.80</td><td>31.08</td><td>17.71</td></tr>
-                        <tr><td>Saliency</td><td>52.02</td><td>41.10</td><td>10.92</td><td>44.97</td><td>37.01</td><td>23.73</td></tr>
-                        <tr><td>Integrated Grad.</td><td>49.23</td><td>45.97</td><td>3.27</td><td>45.63</td><td>34.18</td><td>22.25</td></tr>
-                        <tr><td>Guided IG</td><td>50.77</td><td>45.10</td><td>5.67</td><td>51.25</td><td>30.17</td><td>21.65</td></tr>
-                        <tr><td>Blur IG</td><td>52.40</td><td>41.63</td><td>10.78</td><td>44.25</td><td>36.69</td><td>22.84</td></tr>
-                        <tr><td>XRAI</td><td>54.45</td><td>38.72</td><td>15.73</td><td>51.98</td><td>26.59</td><td>12.08</td></tr>
-                        <tr><td>Deep Lift</td><td>49.78</td><td>48.51</td><td>1.27</td><td>44.80</td><td>36.67</td><td>24.07</td></tr>
-                        <tr><td>LIME</td><td>53.18</td><td>48.44</td><td>4.73</td><td>47.98</td><td>32.44</td><td>15.29</td></tr>
-                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>54.85</td><td>28.26</td><td>26.59</td><td>60.82</td><td>17.41</td><td><b>8.85</b></td></tr>
-                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>52.32</td><td>15.06</td><td><b>37.26</b></td><td><b>62.60</b></td><td><b>16.43</b></td><td>12.27</td></tr>
-                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>53.24</td><td>23.77</td><td>29.48</td><td>60.49</td><td>19.40</td><td>13.67</td></tr>
-
-                        <tr class="model-header"><th colspan="7">DMTNet</th></tr>
-
-                        <tr><td>Random</td><td>21.21</td><td>20.98</td><td>0.23</td><td>60.36</td><td>24.93</td><td>31.88</td></tr>
-                        <tr><td>Gaussian Noise Mask</td><td>39.08</td><td>15.71</td><td>23.37</td><td>59.35</td><td>20.69</td><td>13.26</td></tr>
-                        <tr><td>Saliency</td><td>36.51</td><td>26.79</td><td>9.72</td><td>63.09</td><td>21.05</td><td>15.77</td></tr>
-                        <tr><td>Integrated Grad.</td><td>26.25</td><td>19.47</td><td>6.78</td><td>62.51</td><td>21.63</td><td>20.32</td></tr>
-                        <tr><td>Blur IG</td><td>35.04</td><td>20.32</td><td>14.72</td><td>62.17</td><td>21.54</td><td>20.20</td></tr>
-                        <tr><td>XRAI</td><td>38.19</td><td>26.55</td><td>11.64</td><td>68.42</td><td>16.48</td><td>10.73</td></tr>
-                        <tr><td>LIME</td><td>36.83</td><td>32.44</td><td>4.39</td><td><b>70.72</b></td><td>19.20</td><td>11.36</td></tr>
-                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>40.10</td><td>17.09</td><td>23.01</td><td>67.30</td><td>10.53</td><td>4.49</td></tr>
-                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>40.52</td><td>16.38</td><td><b>24.14</b></td><td>67.23</td><td><b>9.95</b></td><td><b>3.10</b></td></tr>
-                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>38.85</td><td>18.81</td><td>20.03</td><td>67.16</td><td>10.49</td><td>3.72</td></tr>
+                        <tr class="model-header"><th colspan="5">DCAMA</th></tr>
+                        <tr><td>Random</td><td>33.79</td><td>29.78</td><td>41.42</td><td>31.62</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>27.07</td><td>12.96</td><td>31.08</td><td>17.71</td></tr>
+                        <tr><td>Saliency</td><td>33.93</td><td>24.13</td><td>37.01</td><td>23.73</td></tr>
+                        <tr><td>Integrated Gradients</td><td>32.19</td><td>22.61</td><td>34.18</td><td>22.25</td></tr>
+                        <tr><td>Guided IG</td><td>25.96</td><td>19.49</td><td>30.17</td><td>21.65</td></tr>
+                        <tr><td>Blur IG</td><td>33.89</td><td>23.29</td><td>36.69</td><td>22.84</td></tr>
+                        <tr><td>XRAI</td><td>29.65</td><td>14.50</td><td>26.59</td><td>12.08</td></tr>
+                        <tr><td>Deep Lift</td><td>32.60</td><td>24.85</td><td>36.67</td><td>24.07</td></tr>
+                        <tr><td>LIME</td><td>27.27</td><td>13.44</td><td>32.44</td><td>15.29</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>19.84</u></td><td><u>10.08</u></td><td><u>17.41</u></td><td><b>8.85</b></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>17.19</b></td><td><b>7.64</b></td><td><b>15.38</b></td><td><u>9.83</u></td></tr>
+                        <tr class="model-header"><th colspan="5">DMTNet</th></tr>
+                        <tr><td>Random</td><td>23.53</td><td>26.01</td><td>24.93</td><td>31.88</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>16.20</td><td>8.66</td><td>20.69</td><td>13.26</td></tr>
+                        <tr><td>Saliency</td><td>20.15</td><td>17.46</td><td>21.05</td><td>15.77</td></tr>
+                        <tr><td>Integrated Gradients</td><td>20.53</td><td>20.81</td><td>21.63</td><td>20.32</td></tr>
+                        <tr><td>Blur IG</td><td>20.22</td><td>17.42</td><td>21.54</td><td>20.20</td></tr>
+                        <tr><td>XRAI</td><td>14.83</td><td>6.30</td><td>16.48</td><td>10.73</td></tr>
+                        <tr><td>LIME</td><td>14.84</td><td>8.32</td><td>19.20</td><td>11.36</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>10.97</u></td><td><u>4.14</u></td><td><u>10.53</u></td><td><u>4.49</u></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>10.54</b></td><td><b>3.90</b></td><td><b>10.35</b></td><td><b>4.09</b></td></tr>
+                        <tr class="model-header"><th colspan="5">INSID3</th></tr>
+                        <tr><td>Random</td><td>59.08</td><td>46.67</td><td>64.78</td><td>63.71</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>36.62</td><td>12.64</td><td>57.46</td><td>26.31</td></tr>
+                        <tr><td>LIME</td><td>44.29</td><td>22.02</td><td>62.31</td><td>52.01</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>26.86</u></td><td><u>4.18</u></td><td><u>28.61</u></td><td><u>7.13</u></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>23.79</b></td><td><b>3.05</b></td><td><b>25.90</b></td><td><b>6.28</b></td></tr>
+                        <tr class="model-header"><th colspan="5">SANSA</th></tr>
+                        <tr><td>Random</td><td>64.54</td><td>58.87</td><td>68.50</td><td>63.42</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>41.09</td><td>17.48</td><td>53.59</td><td>15.90</td></tr>
+                        <tr><td>Saliency</td><td>50.77</td><td>28.23</td><td>46.69</td><td>17.16</td></tr>
+                        <tr><td>Integrated Gradients</td><td>52.85</td><td>30.38</td><td>49.19</td><td>22.79</td></tr>
+                        <tr><td>Guided IG</td><td>41.77</td><td>27.37</td><td>31.85</td><td>16.47</td></tr>
+                        <tr><td>Blur IG</td><td>52.79</td><td>26.17</td><td>48.56</td><td>16.45</td></tr>
+                        <tr><td>XRAI</td><td>41.63</td><td>13.76</td><td>21.21</td><td><u>3.83</u></td></tr>
+                        <tr><td>LIME</td><td>50.94</td><td>32.62</td><td>64.28</td><td>45.05</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>35.62</u></td><td><u>13.72</u></td><td><u>18.21</u></td><td>4.59</td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>29.26</b></td><td><b>7.48</b></td><td><b>15.99</b></td><td><b>3.18</b></td></tr>
                     </tbody>
                 </table>
 
@@ -653,42 +837,57 @@
                     <thead>
                         <tr class="header-labels">
                             <th style="min-width: 150px;">Method</th>
-                            <th title="Insertion AUC (mIoU)">IAUC<br><span class="unit">(mIoU)</span></th>
-                            <th title="Deletion AUC (mIoU)">DAUC<br><span class="unit">(mIoU)</span></th>
-                            <th title="Difference (IAUC - DAUC)">Diff.<br>&uarr;</th>
-                            <th title="Insertion AUC (Confidence)">IAUC<br><span class="unit">@1%</span><br><span class="unit">(Conf)</span></th>
-                            <th title="mIoU Loss @ 1%">mIoUL<br><span class="unit">@1%</span> &darr;</th>
-                            <th title="mIoU Loss @ 5%">mIoUL<br><span class="unit">@5%</span> &darr;</th>
+                            <th colspan="2">1-shot</th>
+                            <th colspan="2">5-shot</th>
+                        </tr>
+                        <tr class="header-labels">
+                            <th></th>
+                            <th title="mIoU loss when only the top 1% of support pixels is kept">mIoULoss<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 5% of support pixels is kept">mIoULoss<br><span class="unit">@5%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 1% of support pixels is kept">mIoULoss<br><span class="unit">@1%</span> &darr;</th>
+                            <th title="mIoU loss when only the top 5% of support pixels is kept">mIoULoss<br><span class="unit">@5%</span> &darr;</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="model-header"><th colspan="7">DCAMA</th></tr>
-                        
-                        <tr><td>Random</td><td>71.35</td><td>70.77</td><td>0.59</td><td>41.71</td><td>55.24</td><td>33.42</td></tr>
-                        <tr><td>Gaussian Noise Mask</td><td>74.67</td><td>23.36</td><td>51.31</td><td>55.32</td><td>35.65</td><td>15.86</td></tr>
-                        <tr><td>Saliency</td><td>72.99</td><td>66.73</td><td>6.27</td><td>44.32</td><td>46.42</td><td>24.46</td></tr>
-                        <tr><td>Integrated Grad.</td><td>72.38</td><td>70.22</td><td>2.16</td><td>42.94</td><td>45.01</td><td>23.26</td></tr>
-                        <tr><td>Guided IG</td><td>71.74</td><td>70.35</td><td>1.39</td><td>49.08</td><td>42.53</td><td>23.19</td></tr>
-                        <tr><td>Blur IG</td><td>73.82</td><td>65.80</td><td>8.01</td><td>42.23</td><td>46.86</td><td>21.53</td></tr>
-                        <tr><td>XRAI</td><td>75.52</td><td>60.98</td><td>14.55</td><td>56.12</td><td>26.25</td><td>8.55</td></tr>
-                        <tr><td>Deep Lift</td><td>72.72</td><td>71.66</td><td>1.06</td><td>44.19</td><td>45.82</td><td>22.83</td></tr>
-                        <tr><td>LIME</td><td>74.77</td><td>72.20</td><td>2.57</td><td>49.19</td><td>36.71</td><td>13.40</td></tr>
-                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>76.23</td><td>46.34</td><td>29.89</td><td>66.82</td><td>13.78</td><td><b>5.72</b></td></tr>
-                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>73.16</td><td>21.19</td><td><b>51.97</b></td><td><b>67.91</b></td><td><b>13.71</b></td><td>7.09</td></tr>
-                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>75.46</td><td>45.45</td><td>30.01</td><td>66.60</td><td>13.93</td><td>7.82</td></tr>
-
-                        <tr class="model-header"><th colspan="7">DMTNet</th></tr>
-
-                        <tr><td>Random</td><td>29.01</td><td>28.46</td><td>0.55</td><td>60.35</td><td>33.89</td><td>46.01</td></tr>
-                        <tr><td>Gaussian Noise Mask</td><td>54.53</td><td>24.41</td><td>30.12</td><td>59.90</td><td>33.24</td><td>31.00</td></tr>
-                        <tr><td>Saliency</td><td>52.43</td><td>41.22</td><td>11.21</td><td>64.85</td><td>29.85</td><td>25.49</td></tr>
-                        <tr><td>Integrated Grad.</td><td>37.13</td><td>29.08</td><td>8.05</td><td>63.99</td><td>30.31</td><td>33.07</td></tr>
-                        <tr><td>Blur IG</td><td>47.83</td><td>33.82</td><td>14.01</td><td>63.62</td><td>29.77</td><td>33.13</td></tr>
-                        <tr><td>XRAI</td><td>55.82</td><td>45.72</td><td>10.09</td><td>69.78</td><td>20.03</td><td>12.88</td></tr>
-                        <tr><td>LIME</td><td>54.76</td><td>49.80</td><td>4.96</td><td><b>70.56</b></td><td>23.46</td><td>12.43</td></tr>
-                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td>58.16</td><td>28.81</td><td>29.35</td><td>66.80</td><td>13.34</td><td>5.32</td></tr>
-                        <tr class="ours-row-best"><td><strong>Masked AffEx</strong></td><td>58.47</td><td>26.87</td><td><b>31.60</b></td><td>66.94</td><td><b>12.78</b></td><td><b>4.62</b></td></tr>
-                        <tr class="ours-row"><td><strong>Signed AffEx</strong></td><td>57.58</td><td>35.68</td><td>21.90</td><td>68.05</td><td>13.16</td><td>6.38</td></tr>
+                        <tr class="model-header"><th colspan="5">DCAMA</th></tr>
+                        <tr><td>Random</td><td>48.72</td><td>34.64</td><td>55.24</td><td>33.42</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>33.60</td><td>16.01</td><td>35.65</td><td>15.86</td></tr>
+                        <tr><td>Saliency</td><td>50.06</td><td>32.80</td><td>46.42</td><td>24.46</td></tr>
+                        <tr><td>Integrated Gradients</td><td>44.41</td><td>27.53</td><td>45.01</td><td>23.26</td></tr>
+                        <tr><td>Guided IG</td><td>41.33</td><td>29.58</td><td>42.53</td><td>23.19</td></tr>
+                        <tr><td>Blur IG</td><td>47.96</td><td>28.61</td><td>46.86</td><td>21.53</td></tr>
+                        <tr><td>XRAI</td><td>37.49</td><td>13.25</td><td>26.25</td><td>8.55</td></tr>
+                        <tr><td>Deep Lift</td><td>46.76</td><td>28.93</td><td>45.82</td><td>22.83</td></tr>
+                        <tr><td>LIME</td><td>40.03</td><td>13.97</td><td>36.71</td><td>13.40</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>22.85</u></td><td><u>7.90</u></td><td><u>13.78</u></td><td><b>5.72</b></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>20.22</b></td><td><b>6.79</b></td><td><b>11.56</b></td><td><u>5.85</u></td></tr>
+                        <tr class="model-header"><th colspan="5">DMTNet</th></tr>
+                        <tr><td>Random</td><td>35.79</td><td>41.19</td><td>33.89</td><td>46.01</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>31.02</td><td>23.73</td><td>33.24</td><td>31.00</td></tr>
+                        <tr><td>Saliency</td><td>33.30</td><td>35.59</td><td>29.85</td><td>25.49</td></tr>
+                        <tr><td>Integrated Gradients</td><td>32.03</td><td>37.64</td><td>30.31</td><td>33.07</td></tr>
+                        <tr><td>Blur IG</td><td>31.56</td><td>35.04</td><td>29.77</td><td>33.13</td></tr>
+                        <tr><td>XRAI</td><td>20.56</td><td>10.80</td><td>20.03</td><td>12.88</td></tr>
+                        <tr><td>LIME</td><td>22.95</td><td>10.40</td><td>23.46</td><td>12.43</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>16.35</u></td><td><u>7.85</u></td><td><u>13.34</u></td><td><u>5.32</u></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>16.33</b></td><td><b>7.83</b></td><td><b>13.29</b></td><td><b>5.29</b></td></tr>
+                        <tr class="model-header"><th colspan="5">INSID3</th></tr>
+                        <tr><td>Random</td><td>60.44</td><td>47.19</td><td>68.99</td><td>68.10</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>45.31</td><td>25.23</td><td>67.90</td><td>46.58</td></tr>
+                        <tr><td>LIME</td><td>48.14</td><td>26.21</td><td>66.26</td><td>52.40</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>33.70</u></td><td><u>4.78</u></td><td><u>44.61</u></td><td><u>10.65</u></td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>32.99</b></td><td><b>4.44</b></td><td><b>43.79</b></td><td><b>8.92</b></td></tr>
+                        <tr class="model-header"><th colspan="5">SANSA</th></tr>
+                        <tr><td>Random</td><td>72.55</td><td>68.27</td><td>74.26</td><td>69.83</td></tr>
+                        <tr><td>Gaussian Noise Mask</td><td>56.60</td><td>28.14</td><td>66.37</td><td>25.36</td></tr>
+                        <tr><td>Saliency</td><td>60.25</td><td>36.78</td><td>55.97</td><td>17.00</td></tr>
+                        <tr><td>Integrated Gradients</td><td>61.94</td><td>36.88</td><td>61.66</td><td>28.70</td></tr>
+                        <tr><td>Guided IG</td><td>53.16</td><td>36.03</td><td>39.30</td><td>20.80</td></tr>
+                        <tr><td>Blur IG</td><td>60.07</td><td>30.83</td><td>55.49</td><td>17.10</td></tr>
+                        <tr><td>XRAI</td><td>43.70</td><td>13.25</td><td>23.00</td><td><u>3.90</u></td></tr>
+                        <tr><td>LIME</td><td>64.39</td><td>48.45</td><td>68.23</td><td>45.14</td></tr>
+                        <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>40.11</u></td><td><u>12.83</u></td><td><u>17.59</u></td><td>4.09</td></tr>
+                        <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>37.86</b></td><td><b>9.95</b></td><td><b>16.21</b></td><td><b>3.83</b></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -699,11 +898,11 @@
     <section class="section" id="BibTeX">
         <div class="container is-max-desktop content">
             <h2 class="title">BibTeX</h2>
-            <pre><code>@article{AffEx2026,
+            <pre><code>@inproceedings{demarinis2026affex,
   title={Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design},
   author={De Marinis, Pasquale and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
-  journal={arXiv},
-  year={2025}
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2026}
 }</code></pre>
         </div>
     </section>
@@ -712,9 +911,6 @@
     <footer class="footer">
         <div class="container">
             <div class="content has-text-centered">
-                <a class="icon-link" href="#">
-                    <i class="fas fa-file-pdf"></i>
-                </a>
                 <a class="icon-link" href="https://github.com/pasqualedem" class="external-link" disabled>
                     <i class="fab fa-github"></i>
                 </a>

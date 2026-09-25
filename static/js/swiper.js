@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const toggleBtn = document.querySelector("[data-nav-toggle-btn]");
   const mobileNav = document.querySelector(".mobile-nav");
+  if (!toggleBtn || !mobileNav) return;
   const menuIcon = toggleBtn.querySelector(".menu-icon");
   const closeIcon = toggleBtn.querySelector(".close-icon");
 
@@ -20,6 +21,7 @@ swiper1 = new Swiper(".swiper-container", {
   slidesPerView: 1,
   spaceBetween: 30,
   loop: true,
+  autoHeight: true,
   pagination: {
     el: ".swiper-pagination",
     clickable: true,

@@ -6,3 +6,44 @@
   display: inline-block;
   max-width: 100%;
 }
+/* autoHeight makes the track hug the current slide, so the pagination needs its own room
+   or it sits on top of the figure. */
+.swiper-container {
+  padding-bottom: 4rem;
+}
+
+.swiper-pagination {
+  bottom: 0.75rem;
+}
+
+/* The figures are drawn on white, so they sit on a white card rather than straight on the
+   section's grey. */
+.figure-card {
+  display: inline-block;
+  background-color: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.06);
+  padding: 1.25rem;
+  max-width: 100%;
+}
+
+.figure-card img {
+  display: block;
+  max-height: 560px;
+  max-width: 100%;
+  width: auto;
+}
+
+.figure-card.is-wide img {
+  max-height: none;
+  width: 100%;
+  max-width: 800px;
+}
+
+.slide-caption {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #7a7a7a;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
