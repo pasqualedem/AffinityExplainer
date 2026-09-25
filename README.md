@@ -1,10 +1,22 @@
-#  [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
+# <img src="imgs/icon.svg" alt="icon" width="40" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
 
 <div align="center">
 
+![AffinityExplainer Framework](imgs/FSSAffex.svg)
+
+*Few-Shot Semantic Segmentation meets Explainability*
+
+[![NeurIPS 2026](https://img.shields.io/badge/NeurIPS%202026-Accepted-8b5cf6.svg)](https://neurips.cc/)
+[![Website](https://img.shields.io/badge/Website-Visit-orange.svg)](https://pasqualedem.github.io/AffinityExplainer/)
+[![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2511.18163)
+[![Demo](https://img.shields.io/badge/Demo-Launch-blue.svg)](#one-line-demo)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+[Demo](#one-line-demo) • [Installation](#installation) • [Models](#models) • [Reproduction](#reproduce-the-paper) • [Repository map](#repository-map)
+
+</div>
+
 ---
-
-
 
 This repository accompanies our paper, accepted at **NeurIPS 2026**:
 
