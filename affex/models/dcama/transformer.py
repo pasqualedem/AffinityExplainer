@@ -82,10 +82,17 @@ def smooth(heatmap, alpha):
     return smoothed_heatmap
 
 
+# Affinity-noise intervention (appendix experiment): module-level knob, 0.0 = no-op.
+SIM_NOISE_STD = 0.0
+
+
 def attention(query, key, value, mask=None, dropout=None, aggregation='sum', alpha=0.0, temperature=1.0, **kwargs):
     "Compute 'Scaled Dot Product Attention' with customizable aggregation and hyperparameters"
     d_k = query.size(-1)
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+    if SIM_NOISE_STD:
+        valid = scores > -1e8  # exclude masked fills
+        scores = scores + torch.randn_like(scores) * SIM_NOISE_STD * scores[valid].std()
 
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)

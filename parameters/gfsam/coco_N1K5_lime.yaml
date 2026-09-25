@@ -1,0 +1,71 @@
+grid: GFSAM_coco_N1K5_lime
+parameters:
+  model:
+  - gfsam
+  cache:
+  - false
+  explainer:
+    name:
+    - lime
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  disable_iauc:
+  - false
+  disable_dauc:
+  - true
+  metric:
+    n_steps:
+    - 1
+    substrate_fn:
+    - zero
+    percentage:
+    - 0.01
+    - 0.05
+    measure:
+    - miou
+    loss:
+    - true
+    skip_empty:
+    - true
+  dataset:
+    datasets:
+      val_coco20i_N1K5:
+        name:
+        - coco
+        instances_path:
+        - data/coco/annotations/instances_val2014.json
+        all_example_categories:
+        - false
+        img_dir:
+        - data/coco/train_val_2017
+        n_shots:
+        - 5
+        n_ways:
+        - 1
+        do_subsample:
+        - false
+        add_box_noise:
+        - false
+        val_fold_idx:
+        - null
+        n_folds:
+        - null
+        split:
+        - val
+    common:
+      remove_small_annotations:
+      - true
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+  dataloader:
+    num_workers:
+    - 8
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+other_grids: null

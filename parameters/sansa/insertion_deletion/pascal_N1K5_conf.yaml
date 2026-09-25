@@ -1,0 +1,81 @@
+grid: SANSA_T2_pascal_N1K5_conf
+parameters:
+  model:
+  - sansa
+  cache:
+  - false
+  explainer:
+    name:
+    - random
+    - gaussian_noise
+    - lime
+    - affinity
+    - masked_affinity
+    - signed_affinity
+    explanation_size:
+    - 64
+    mask_blur_kernel_size:
+    - 7
+    mask_blur_sigma:
+    - 50
+    mask_dilation_radius:
+    - 5
+    mask_dilation_kernel:
+    - 7
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  disable_iauc:
+  - false
+  disable_dauc:
+  - true
+  metric:
+    n_steps:
+    - 25
+    substrate_fn:
+    - zero
+    measure:
+    - logits
+    percentage:
+    - 0.01
+    skip_empty:
+    - true
+  dataset:
+    datasets:
+      val_pascal5i_N1K5_100:
+        name:
+        - pascal
+        data_dir:
+        - data/pascal
+        split:
+        - val
+        val_fold_idx:
+        - null
+        n_folds:
+        - 4
+        n_shots:
+        - 5
+        n_ways:
+        - 1
+        do_subsample:
+        - false
+        val_num_samples:
+        - 100
+        maintain_gt_shape:
+        - false
+    common:
+      remove_small_annotations:
+      - true
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+  dataloader:
+    num_workers:
+    - 8
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+other_grids: null

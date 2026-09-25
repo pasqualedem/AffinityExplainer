@@ -13,7 +13,6 @@ import numpy as np
 import torch
 from PIL import Image, ImageDraw
 from torch.utils.data import Dataset
-from transformers.utils.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_STANDARD_MEAN, IMAGENET_STANDARD_STD
 
 from pycocotools import mask as mask_utils
 from affex.utils.utils import EasyDict
@@ -161,6 +160,9 @@ def load_dict(path: str) -> dict:
     return instances
 
 
+_INSTANCES_CACHE: dict = {}
+
+
 def load_instances(path: str) -> dict:
     """Loads a dictionary of instances from a file.
 
@@ -170,6 +172,9 @@ def load_instances(path: str) -> dict:
     Returns:
         dict: dictionary of instances.
     """
+    cached = _INSTANCES_CACHE.get(str(path))
+    if cached is not None:
+        return cached
     if "*" in str(path):
         files = glob.glob(path)
         instances = {}
@@ -177,6 +182,7 @@ def load_instances(path: str) -> dict:
             instances.update(load_dict(file))
     else:
         instances = load_dict(path)
+    _INSTANCES_CACHE[str(path)] = instances
     return instances
 
 
@@ -546,14 +552,22 @@ class RandomDataset(Dataset):
         }, torch.stack(gt_list)
 
 
+# The two normalisations the models were trained with: "default" is the ImageNet
+# statistics, "standard" the symmetric [-1, 1] scaling.
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+STANDARD_MEAN = [0.5, 0.5, 0.5]
+STANDARD_STD = [0.5, 0.5, 0.5]
+
+
 def get_mean_std(mean, std):
     str_to_mean = {
-        "default": IMAGENET_DEFAULT_MEAN,
-        "standard": IMAGENET_STANDARD_MEAN,
+        "default": IMAGENET_MEAN,
+        "standard": STANDARD_MEAN,
     }
     str_to_std = {
-        "default": IMAGENET_DEFAULT_STD,
-        "standard": IMAGENET_STANDARD_STD,
+        "default": IMAGENET_STD,
+        "standard": STANDARD_STD,
     }
     if isinstance(mean, str):
         mean = str_to_mean[mean]

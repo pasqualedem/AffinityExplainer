@@ -1,7 +1,8 @@
-from .affinity import AffinityExplainer, MaskedAffinityExplainer, SignedAffinityExplainer, ReverseSignedAffinityExplainer
+from .affinity import AffinityExplainer, MaskedAffinityExplainer, SignedAffinityExplainer, ReverseSignedAffinityExplainer, SmoothedAffinityExplainer, EncoderAffinityExplainer
 from .captum import CaptumExplainer
 from .random import GaussianNoiseMask, RandomExplainer
 from .saliency import SaliencyExplainer
+from .prototype_readout import PrototypeReadoutExplainer
 
 
 from ..utils.segmentation import unnormalize
@@ -17,12 +18,15 @@ EXPLAINER_REGISTRY = {
     "masked_affinity": MaskedAffinityExplainer,
     "signed_affinity": SignedAffinityExplainer,
     "reverse_signed_affinity": ReverseSignedAffinityExplainer,
+    "smoothed_affinity": SmoothedAffinityExplainer,
+    "encoder_affinity": EncoderAffinityExplainer,
     "random": RandomExplainer,
     "gaussian_noise": GaussianNoiseMask,
     "lime": CaptumExplainer,
     "guided_ig": SaliencyExplainer,
     "blur_ig": SaliencyExplainer,
     "xrai": SaliencyExplainer,
+    "prototype_readout": PrototypeReadoutExplainer,
 }
 
 
@@ -35,7 +39,7 @@ def build_explainer(model, name, params, device="cpu"):
         )
 
     explainer_class = EXPLAINER_REGISTRY[name]
-    if name in ["random", "gaussian_noise", "affinity", "masked_affinity", "signed_affinity"]:
+    if name in ["random", "gaussian_noise", "affinity", "masked_affinity", "signed_affinity", "reverse_signed_affinity", "smoothed_affinity", "encoder_affinity", "prototype_readout"]:
         return explainer_class(model, **params)
 
     return explainer_class(model=model, name=name, **params).to(device)

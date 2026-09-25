@@ -1,0 +1,73 @@
+grid: Matcher_coco_N1K1_lime
+parameters:
+  model:
+  - matcher
+  cache:
+  - false
+  explainer:
+    name:
+    - lime
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  disable_iauc:
+  - false
+  disable_dauc:
+  - true
+  metric:
+    n_steps:
+    - 1
+    substrate_fn:
+    - zero
+    percentage:
+    - 0.01
+    - 0.05
+    measure:
+    - miou
+    loss:
+    - true
+    skip_empty:
+    - true
+  dataset:
+    common:
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+      remove_small_annotations:
+      - true
+    datasets:
+      val_coco20i_N1K1:
+        add_box_noise:
+        - false
+        all_example_categories:
+        - false
+        do_subsample:
+        - false
+        img_dir:
+        - data/coco/train_val_2017
+        instances_path:
+        - data/coco/annotations/instances_val2014.json
+        n_folds:
+        - null
+        n_shots:
+        - 1
+        n_ways:
+        - 1
+        name:
+        - coco
+        split:
+        - val
+        val_fold_idx:
+        - null
+  dataloader:
+    num_workers:
+    - 8
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+    num_processes:
+    - 8
+other_grids: null

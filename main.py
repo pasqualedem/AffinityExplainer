@@ -20,18 +20,7 @@ FUNCTIONS = {
     "evaluate": evaluate,
     "computational": evaluate_computational,
 }
-FUNCTION_SLURMS = {
-    "evaluate": "slurm/launch_run",
-    "computational": "slurm/launch_computational",
-}
-FUNCTIONS_CONDOR = {
-    "evaluate": "slurm/condor",
-    "computational": "slurm/condor",
-}
-SCHEDULERS = {
-    "slurm": FUNCTION_SLURMS,
-    "condor": FUNCTIONS_CONDOR,
-}
+SCHEDULERS = ("slurm", "condor")
 
 
 @click.group()
@@ -87,7 +76,7 @@ def manage_multiprocess_run(run_parameters, run_name, logger, job_parallelism=No
     "--only_create",
     default=False,
     is_flag=True,
-    help="Only create the slurm scripts",
+    help="Write the submit scripts without sending them to the scheduler",
 )
 @click.option(
     "--function",
@@ -103,15 +92,28 @@ def manage_multiprocess_run(run_parameters, run_name, logger, job_parallelism=No
 @click.option(
     "--scheduler",
     default="slurm",
-    help="Scheduler to use, either 'slurm' or 'condor'",
+    help="Scheduler to submit to when --parallel is given, either 'slurm' or 'condor'",
 )
-def grid(parameters, parallel, only_create=False, function="evaluate", job_parallelism=None, scheduler="slurm"):
+@click.option(
+    "--scheduler_script",
+    default=lambda: os.environ.get("AFFEX_SCHEDULER_SCRIPT"),
+    help="Submit script for --parallel, since queues, accounts and partitions are "
+         "site specific. Defaults to $AFFEX_SCHEDULER_SCRIPT.",
+)
+def grid(parameters, parallel, only_create=False, function="evaluate", job_parallelism=None,
+         scheduler="slurm", scheduler_script=None):
     assert function in FUNCTIONS, f"Function {function} not recognized, available functions: {list(FUNCTIONS.keys())}"
-    
+    assert scheduler in SCHEDULERS, f"Scheduler {scheduler} not recognized, available: {list(SCHEDULERS)}"
+
     run_function = FUNCTIONS[function]
-    slurm_script = SCHEDULERS[scheduler][function]
-    
-    assert os.path.exists(slurm_script), f"Slurm script {slurm_script} does not exist"
+
+    if parallel or only_create:
+        assert scheduler_script, (
+            "--parallel submits jobs to a scheduler, so it needs a submit script for this "
+            "machine: pass --scheduler_script or set AFFEX_SCHEDULER_SCRIPT. Without it, "
+            "run the grid directly and it executes in this process."
+        )
+        assert os.path.exists(scheduler_script), f"Submit script {scheduler_script} does not exist"
     
     parameters = load_yaml(parameters)
     grid_name = parameters["grid"]
@@ -144,10 +146,9 @@ def grid(parameters, parallel, only_create=False, function="evaluate", job_paral
                     subrun_parameters = subrun_parameters[0]
                 run = ParallelRun(
                     subrun_parameters,
-                    multi_gpu=False,
                     logger=grid_logger,
                     run_name=subrun_name,
-                    slurm_script=slurm_script,
+                    slurm_script=scheduler_script,
                     scheduler=scheduler,
                 )
                 run.launch(

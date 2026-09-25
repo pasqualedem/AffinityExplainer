@@ -8,7 +8,6 @@ from affex.utils.utils import PrintLogger, write_yaml
 
 class ParallelRun:
     slurm_command = "sbatch"
-    slurm_multi_gpu_script = "slurm/launch_run_multi_gpu"
     slurm_script_first_parameter = "--parameters="
     slurm_script_run_name_parameter = "--run_name="
     out_extension = "log"
@@ -19,17 +18,17 @@ class ParallelRun:
     def __init__(
         self,
         params: dict,
-        multi_gpu=False,
         logger=None,
         run_name=None,
         slurm_script=None,
         scheduler="slurm",
     ):
         self.params = params
-        self.multi_gpu = multi_gpu
         self.logger = logger or PrintLogger()
         self.run_name = run_name
-        self.slurm_script = slurm_script or "slurm/launch_run"
+        if slurm_script is None:
+            raise ValueError("A submit script is required to launch runs through a scheduler.")
+        self.slurm_script = slurm_script
         self.scheduler = scheduler
         if "." not in sys.path:
             sys.path.extend(".")
@@ -118,10 +117,7 @@ class ParallelRun:
         self, params, run_name, out_file, param_file, only_create=False, script_args=[]
     ):
         write_yaml(params, param_file)
-        slurm_script = (
-            self.slurm_multi_gpu_script if self.multi_gpu else self.slurm_script
-        )
-        
+
         if self.scheduler == "slurm":
             self.launch_slurm(
                 params, run_name, out_file, param_file, only_create, script_args
@@ -136,16 +132,13 @@ class ParallelRun:
     def launch_slurm(
         self, params, run_name, out_file, param_file, only_create=False, script_args=[]
     ):
-        slurm_script = (
-            self.slurm_multi_gpu_script if self.multi_gpu else self.slurm_script
-        )
         command = [
             self.slurm_command,
             self.slurm_stdout,
             out_file,
             self.slurm_stderr,
             out_file,
-            slurm_script,
+            self.slurm_script,
             self.slurm_script_first_parameter + param_file,
             self.slurm_script_run_name_parameter + run_name,
             *script_args,
@@ -160,18 +153,13 @@ class ParallelRun:
     def launch_condor(
         self, params, run_name, out_file, param_file, only_create=False, script_args=[]
     ):
-        if self.multi_gpu:
-            raise NotImplementedError("Multi GPU not implemented for condor scheduler")
-        
-        slurm_script = self.slurm_script
-        
         command = [
             "condor_submit",
             f"output={out_file}",
             f"error={out_file}",
             f"log={out_file}",
             f"arguments='main.py run {self.slurm_script_first_parameter}{param_file} {self.slurm_script_run_name_parameter}{run_name} {' '.join(script_args)}'",
-            slurm_script,
+            self.slurm_script,
         ]
         
         if only_create:

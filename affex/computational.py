@@ -65,7 +65,7 @@ def evaluate_computational(parameters, run_name=None, log_params=True, log_on_fi
     device = parameters.get("device", "cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Running on {device}")
 
-    model, image_size = build_model_preconfigured(model_name=parameters["model"])
+    model, image_size = build_model_preconfigured(model_name=parameters["model"], **parameters.get("model_params", {}))
     model.eval()
     model.to(device)
     log_frequency = parameters.get("log_frequency", 50)
@@ -77,16 +77,21 @@ def evaluate_computational(parameters, run_name=None, log_params=True, log_on_fi
         parameters["dataset"]["preprocess"] = {} 
     parameters["dataset"]["preprocess"]["image_size"] = image_size
 
-    _, val, _ = get_dataloaders(
+    val = get_dataloaders(
         copy.deepcopy(parameters["dataset"]),
         copy.deepcopy(parameters["dataloader"]),
         num_processes=1,
     )
 
+    explainer_params = {k: v for k, v in parameters["explainer"].items() if k != "name"}
+    if parameters.get("explanation_size") is not None:
+        # Grids set it at the top level; the explainer takes it at construction time.
+        explainer_params["explanation_size"] = parameters["explanation_size"]
+
     explainer = build_explainer(
         model=model,
         name=parameters["explainer"]["name"],
-        params={k: v for k, v in parameters["explainer"].items() if k != "name"},
+        params=explainer_params,
         device=device,
     )
 
@@ -95,7 +100,7 @@ def evaluate_computational(parameters, run_name=None, log_params=True, log_on_fi
     warmup_steps = parameters["warmup_steps"]
     total_steps = num_steps + warmup_steps
     
-    explanation_size = parameters.get("explanation_size", image_size)
+    evaluation_size = parameters.get("evaluation_size", image_size)
     
     explanation_times = []
     forward_memories = []
@@ -135,8 +140,7 @@ def evaluate_computational(parameters, run_name=None, log_params=True, log_on_fi
                 
             forward_memory = torch.cuda.max_memory_allocated(device=device) / (1024 ** 2)  # in MB
 
-            explanation_size = explanation_size or input_dict[BatchKeys.IMAGES].shape[-2:]
-            explanation_mask = get_explanation_mask(input_dict, gt, result, explanation_size, masking_type)
+            explanation_mask = get_explanation_mask(input_dict, gt, result, evaluation_size, masking_type)
             
             start_explanation = torch.cuda.Event(enable_timing=True)
             end_explanation = torch.cuda.Event(enable_timing=True)
@@ -148,7 +152,6 @@ def evaluate_computational(parameters, run_name=None, log_params=True, log_on_fi
             _ = explainer.explain(
                 input_dict=input_dict,
                 explanation_mask=explanation_mask,
-                explanation_size=explanation_size,
             )
             end_explanation.record()
             torch.cuda.synchronize()

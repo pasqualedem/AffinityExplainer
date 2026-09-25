@@ -1,11 +1,42 @@
 import numpy as np
-import plotly.express as px
 import torch
 
 from torchvision.transforms.functional import resize
 from einops import rearrange
 
 from affex.data.utils import BatchKeys
+
+
+# Plotly's qualitative Alphabet palette, inlined: it was the only thing plotly
+# was pulled in for (47 MB for a list of colours).
+QUALITATIVE_ALPHABET = [
+    "#AA0DFE",
+    "#3283FE",
+    "#85660D",
+    "#782AB6",
+    "#565656",
+    "#1C8356",
+    "#16FF32",
+    "#F7E1A0",
+    "#E2E2E2",
+    "#1CBE4F",
+    "#C4451C",
+    "#DEA0FD",
+    "#FE00FA",
+    "#325A9B",
+    "#FEAF16",
+    "#F8A19F",
+    "#90AD1C",
+    "#F6222E",
+    "#1CFFCE",
+    "#2ED9FF",
+    "#B10DA1",
+    "#C075A6",
+    "#FC1CBF",
+    "#B00068",
+    "#FBE426",
+    "#FA0087",
+]
 
 
 class ColorMap:
@@ -15,7 +46,7 @@ class ColorMap:
             "#00ff00",
             "#ff0000",
             "#0000ff",
-        ] + px.colors.qualitative.Alphabet
+        ] + QUALITATIVE_ALPHABET
         self.cmap = [
             tuple(int(h.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
             for h in self.cmap

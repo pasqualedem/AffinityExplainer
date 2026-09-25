@@ -31,6 +31,9 @@ warnings.filterwarnings("ignore")
 logger = get_logger(__name__)
 
 
+from ..assets import ensure, resolve
+
+
 class CocoLVISDataset(Dataset):
     """Dataset class for COCO and LVIS datasets."""
 
@@ -78,6 +81,14 @@ class CocoLVISDataset(Dataset):
             is_pyramids (bool, optional): Specify if the embeddings are pyramids. Defaults to False.
         """
         super().__init__()
+        instances_path = resolve(instances_path)
+        if not os.path.exists(instances_path):
+            # Nothing to install by hand: fetch the annotations on first use.
+            ensure("coco-annotations")
+        if img_dir is not None and not os.path.exists(resolve(img_dir)):
+            # Reading images from disk was asked for, so fetch them; leaving img_dir
+            # unset streams each image from its COCO url instead.
+            ensure("coco-images")
         print(f"Loading dataset annotations from {instances_path}...")
 
         assert (
@@ -94,9 +105,9 @@ class CocoLVISDataset(Dataset):
             )
 
         self.name = name
-        self.instances_path = instances_path
+        self.instances_path = resolve(instances_path)
 
-        self.img_dir = img_dir
+        self.img_dir = resolve(img_dir)
         self.emb_dir = emb_dir
         self.load_embeddings = load_embeddings
         self.load_gts = load_gts

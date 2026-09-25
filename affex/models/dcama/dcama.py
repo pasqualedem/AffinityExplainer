@@ -4,6 +4,8 @@ from operator import add
 
 from einops import rearrange, repeat
 import torch
+
+from ...assets import resolve
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet
@@ -169,20 +171,20 @@ def get_feature_extractor(backbone, pretrained_path):
     feat_ids = None
     if backbone == 'resnet50':
         feature_extractor = resnet.resnet50()
-        feature_extractor.load_state_dict(torch.load(pretrained_path))
+        feature_extractor.load_state_dict(torch.load(resolve(pretrained_path), map_location="cpu"))
         feat_channels = [256, 512, 1024, 2048]
         nlayers = [3, 4, 6, 3]
         feat_ids = list(range(0, 17))
     elif backbone == 'resnet101':
         feature_extractor = resnet.resnet101()
-        feature_extractor.load_state_dict(torch.load(pretrained_path))
+        feature_extractor.load_state_dict(torch.load(resolve(pretrained_path), map_location="cpu"))
         feat_channels = [256, 512, 1024, 2048]
         nlayers = [3, 4, 23, 3]
         feat_ids = list(range(0, 34))
     elif backbone == 'swin':
         feature_extractor = SwinTransformer(img_size=384, patch_size=4, window_size=12, embed_dim=128,
                                    depths=[2, 2, 18, 2], num_heads=[4, 8, 16, 32])
-        feature_extractor.load_state_dict(torch.load(pretrained_path)['model'])
+        feature_extractor.load_state_dict(torch.load(resolve(pretrained_path), map_location="cpu")["model"])
         feat_channels = [128, 256, 512, 1024]
         nlayers = [2, 2, 18, 2]
     else:

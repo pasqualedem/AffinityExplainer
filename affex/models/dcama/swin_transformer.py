@@ -589,17 +589,3 @@ class SwinTransformer(nn.Module):
         flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
         flops += self.num_features * self.num_classes
         return flops
-
-
-if __name__ == '__main__':
-    input = torch.randn(2, 3, 384, 384).cuda()
-
-    net = SwinTransformer(img_size=384, patch_size=4, window_size=12, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32))
-    net.load_state_dict(torch.load("/apdcephfs/share_1290796/shixinyu/checkpoints/swin_base_patch4_window12_384_22kto1k.pth")['model'])
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    net.to(device)
-
-    out = net.forward_features(input)
-    feat = net.feat_maps
-    for x in feat:
-        print(x.shape)

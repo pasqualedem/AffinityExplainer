@@ -60,6 +60,8 @@ def log_step(input_dict, gt, results, explanation, metrics, outfolder, batch_idx
     gt.rgb.fig.savefig(os.path.join(outfolder, "ground_truth.png"))
     
     explanation.chans.fig.savefig(os.path.join(outfolder, "explanation.png"))
+    # Raw attribution values, so figure panels can be re-rendered in any colormap.
+    torch.save(explanation.detach().cpu(), os.path.join(outfolder, "explanation.pt"))
     
     metrics_folders = os.path.join(outfolder, "metrics")
     os.makedirs(metrics_folders, exist_ok=True)
@@ -186,7 +188,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
     device = parameters.get("device", "cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Running on {device}")
 
-    model, image_size = build_model_preconfigured(model_name=parameters["model"])
+    model, image_size = build_model_preconfigured(model_name=parameters["model"], **parameters.get("model_params", {}))
     model.eval()
     model.to(device)
     log_frequency = parameters.get("log_frequency", 50)
@@ -198,7 +200,7 @@ def evaluate(parameters, run_name=None, log_params=True, log_on_file=True):
         parameters["dataset"]["preprocess"] = {} 
     parameters["dataset"]["preprocess"]["image_size"] = image_size
 
-    _, val, _ = get_dataloaders(
+    val = get_dataloaders(
         copy.deepcopy(parameters["dataset"]),
         copy.deepcopy(parameters["dataloader"]),
         num_processes=1,

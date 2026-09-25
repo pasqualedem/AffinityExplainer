@@ -1,14 +1,10 @@
-# Data Generation Script
+#!/usr/bin/env bash
+# Rebuild the fixed episode lists in data_csv/.
+#
+# They are committed, so this is only needed to define new episode sets. Regenerating
+# them draws different episodes and the numbers in the paper no longer apply.
+set -e
 
-python main.py generate -p parameters/data/pascal.yaml
-python main.py generate -p parameters/data/coco.yaml
-python main.py generate -p parameters/data/isic.yaml
-python main.py generate -p parameters/data/deepglobe.yaml
-python main.py generate -p parameters/data/lung.yaml
-python main.py generate -p parameters/data/pascal_N1K1.yaml
-python main.py generate -p parameters/data/pascal_N1K1_100.yaml
-python main.py generate -p parameters/data/coco_N1K1.yaml
-python main.py generate -p parameters/data/coco_N1K2.yaml
-python main.py generate -p parameters/data/isic_N1K1.yaml
-python main.py generate -p parameters/data/deepglobe_N1K1.yaml
-python main.py generate -p parameters/data/lung_N1K1.yaml
+for cfg in parameters/data/*.yaml; do
+    uv run python main.py generate -p "$cfg"
+done

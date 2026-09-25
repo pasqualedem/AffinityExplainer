@@ -1,4 +1,3 @@
-# from label_anything.models.lam import Lam 
 
 
 from copy import deepcopy

@@ -8,7 +8,6 @@ from torch.nn.functional import one_hot
 import numpy as np
 import torch
 from scipy.ndimage import label, binary_dilation
-from affex.data.coco20i import Coco20iDataset
 from safetensors.torch import load_file
 import itertools
 from torchvision.transforms import PILToTensor, ToTensor
@@ -27,6 +26,9 @@ from affex.utils.logger import get_logger
 import os
 
 logger = get_logger(__name__)
+
+
+from ..assets import ensure, resolve
 
 
 class PascalDataset(Dataset):
@@ -73,6 +75,10 @@ class PascalDataset(Dataset):
         self.name = name
         self.split = split
         self.data_dir = data_dir
+        data_dir = resolve(data_dir)
+        if not os.path.isdir(os.path.join(data_dir, "JPEGImages")):
+            # Pascal has no per-image CDN, so the whole archive is fetched once.
+            ensure("pascal-voc")
         self.img_dir = os.path.join(data_dir, "JPEGImages")
         self.masks_dir = os.path.join(data_dir, "SegmentationClass")
         self.emb_dir = emb_dir

@@ -1,0 +1,75 @@
+grid: DMTNetCurves_pjust_affex
+other_grids: null
+parameters:
+  cache:
+  - false
+  dataloader:
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+    num_workers:
+    - 8
+  dataset:
+    common:
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+      remove_small_annotations:
+      - true
+    datasets:
+      val_pascal5i_N1K5_200:
+        data_dir:
+        - data/pascal
+        do_subsample:
+        - false
+        maintain_gt_shape:
+        - false
+        n_folds:
+        - 4
+        n_shots:
+        - 5
+        n_ways:
+        - 1
+        name:
+        - pascal
+        split:
+        - val
+        val_fold_idx:
+        - null
+  disable_dauc:
+  - true
+  disable_iauc:
+  - false
+  explainer:
+    mask_blur_kernel_size:
+    - 7
+    mask_blur_sigma:
+    - 50
+    mask_dilation_kernel:
+    - 7
+    mask_dilation_radius:
+    - 5
+    name:
+    - affinity
+    - signed_affinity
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  metric:
+    loss:
+    - false
+    measure:
+    - miou
+    n_steps:
+    - 75
+    percentage:
+    - 0.15
+    skip_empty:
+    - true
+    substrate_fn:
+    - zero
+  model:
+  - dmtnet

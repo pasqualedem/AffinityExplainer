@@ -1,4 +1,6 @@
 import torch
+
+from ...assets import resolve
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
@@ -10,7 +12,7 @@ from affex.utils.utils import ResultDict
 
 def build_dmtnet(backbone="resnet50", model_checkpoint="checkpoints/dmtnet.pt", voting=True):
     model = DMTNetMultiClass(backbone, voting=voting)
-    src_dict = torch.load(model_checkpoint, map_location="cpu")
+    src_dict = torch.load(resolve(model_checkpoint), map_location="cpu")
     src_dict = {k[len("module."):]: v for k, v in src_dict.items()}
     model.load_state_dict(src_dict)
     return model

@@ -1,0 +1,71 @@
+grid: SANSA_pascal_N1K5
+parameters:
+  model:
+  - sansa
+  cache:
+  - false
+  explainer:
+    name:
+    - lime
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  disable_iauc:
+  - false
+  disable_dauc:
+  - true
+  metric:
+    n_steps:
+    - 1
+    substrate_fn:
+    - zero
+    percentage:
+    - 0.01
+    - 0.05
+    measure:
+    - miou
+    loss:
+    - true
+    skip_empty:
+    - true
+  dataset:
+    common:
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+      remove_small_annotations:
+      - true
+    datasets:
+      val_pascal5i_N1K5:
+        data_dir:
+        - data/pascal
+        do_subsample:
+        - false
+        maintain_gt_shape:
+        - false
+        n_folds:
+        - 4
+        n_shots:
+        - 5
+        n_ways:
+        - 1
+        name:
+        - pascal
+        split:
+        - val
+        val_fold_idx:
+        - null
+        val_num_samples:
+        - 1000
+  dataloader:
+    num_workers:
+    - 8
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+    num_processes:
+    - 8
+other_grids: null

@@ -1,0 +1,44 @@
+grid: cmp_dense_base
+parameters:
+  model:
+  - matcher
+  cache: [false]
+  explainer:
+    name:
+    - gaussian_noise
+    - affinity
+    explanation_size:
+    - 37
+  explanation_masking: [logits]
+  log_frequency: [25]
+  disable_iauc: [false]
+  disable_dauc: [true]
+  metric:
+    n_steps: [1]
+    substrate_fn: [zero]
+    percentage: [0.01, 0.05]
+    measure: [miou]
+    loss: [true]
+    skip_empty: [true]
+  dataset:
+    datasets:
+      val_pascal5i_N1K1_60:
+        name: [pascal]
+        data_dir: [data/pascal]
+        split: ["val"]
+        val_fold_idx: [null]
+        n_folds: [4]
+        n_shots: [1]
+        n_ways: [1]
+        do_subsample: [false]
+        val_num_samples: [60]
+        maintain_gt_shape: [false]
+    common:
+      remove_small_annotations: [true]
+      custom_preprocess: [false]
+      maintain_gt_shape: [false]
+  dataloader:
+    num_workers: [4]
+    batch_size: [1]
+    csv_folder: [data_csv]
+other_grids: null

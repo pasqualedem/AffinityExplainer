@@ -6,9 +6,6 @@ import itertools
 from typing import Any, Dict, List, Tuple
 from torch.utils.data import Dataset, BatchSampler
 
-from affex.data.deepglobe import DatasetDeepglobe
-from affex.data.isic import DatasetISIC
-from affex.data.lung import DatasetLung
 import affex.data.utils as utils
 from affex.data.coco import CocoLVISDataset
 from affex.data.coco20i import Coco20iDataset
@@ -19,19 +16,17 @@ from affex.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+# The folded variants are what the episode lists in data_csv/ name, so a dataset key of
+# `val_pascal5i_N1K5` resolves to Pascal5iDataset here and takes its fold from the file.
 datasets = {
     "coco": CocoLVISDataset,
     "val_coco": CocoLVISDataset,
     "coco20i": Coco20iDataset,
     "val_coco20i": Coco20iDataset,
-    "lvis": CocoLVISDataset,
     "pascal": PascalDataset,
+    "val_pascal": PascalDataset,
     "pascal5i": Pascal5iDataset,
     "val_pascal5i": Pascal5iDataset,
-    "val_lvis": CocoLVISDataset,
-    "val_deepglobe": DatasetDeepglobe,
-    "val_isic": DatasetISIC,
-    "val_lung": DatasetLung,
 }
 
 def collate_fn(

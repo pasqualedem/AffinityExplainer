@@ -124,3 +124,5 @@ exp_log.csv
 *.zip
 *.out
 *.p
+# Model-check references written by scripts/check_model.py (regenerate, do not commit)
+/refs

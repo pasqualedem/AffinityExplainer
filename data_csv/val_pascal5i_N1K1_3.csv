@@ -1,0 +1,4 @@
+image_ids,classes
+"[[('2011_002150', '/SegmentationClass/2011_002150.png'), ('2009_001663', '/SegmentationClass/2009_001663.png')]]","[[[2], [2]]]"
+"[[('2007_001955', '/SegmentationClass/2007_001955.png'), ('2010_004519', '/SegmentationClass/2010_004519.png')]]","[[[13], [13]]]"
+"[[('2007_007130', '/SegmentationClass/2007_007130.png'), ('2008_003026', '/SegmentationClass/2008_003026.png')]]","[[[20], [20]]]"

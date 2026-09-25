@@ -1,0 +1,46 @@
+grid: AffExMatched_ONLY_DCAMA_full
+
+parameters:
+  model: [dcama]
+  cache: [False]
+  explainer:
+    name: [signed_affinity]
+    mask_blur_kernel_size: [7]
+    mask_blur_sigma: [50]
+    mask_dilation_radius: [5]
+    mask_dilation_kernel: [7]
+
+  explanation_masking: [logits]
+  log_frequency: [50]
+  disable_dauc: [True]
+
+  metric:
+    n_steps: [1]
+    substrate_fn: [zero]
+    percentage: [0.01]
+    measure: [miou]
+    loss: [True]
+    skip_empty: [True]
+
+  dataset:
+    datasets:
+      val_pascal5i_N1K5:
+        name: [pascal]
+        data_dir: [data/pascal]
+        split: ["val"]
+        val_fold_idx: [null]
+        n_folds: [4]
+        n_shots: [5]
+        n_ways: [1]
+        do_subsample: [False]
+        maintain_gt_shape: [False]
+    common:
+      remove_small_annotations: [True]
+      custom_preprocess: [False]
+      maintain_gt_shape: [False]
+  dataloader:
+    num_workers: [8]
+    batch_size: [1]
+    csv_folder: [data_csv]
+
+other_grids:

@@ -20,7 +20,7 @@ def generate_dataset(parameters):
     if not os.path.exists(outfolder):
         os.makedirs(outfolder)
 
-    _, val, _ = get_dataloaders(
+    val = get_dataloaders(
         copy.deepcopy(parameters["dataset"]),
         copy.deepcopy(parameters["dataloader"]),
         num_processes=1,

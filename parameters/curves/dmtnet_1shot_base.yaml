@@ -1,0 +1,68 @@
+grid: Curves1shot_dmtnet_base
+other_grids: null
+parameters:
+  cache:
+  - false
+  dataloader:
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+    num_processes:
+    - 4
+    num_workers:
+    - 8
+  dataset:
+    common:
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+      remove_small_annotations:
+      - true
+    datasets:
+      val_pascal5i_N1K1_300:
+        data_dir:
+        - data/pascal
+        do_subsample:
+        - false
+        maintain_gt_shape:
+        - false
+        n_folds:
+        - 4
+        n_shots:
+        - 1
+        n_ways:
+        - 1
+        name:
+        - pascal
+        split:
+        - val
+        val_fold_idx:
+        - null
+  disable_dauc:
+  - true
+  explainer:
+    name:
+    - random
+    - gaussian_noise
+    - lime
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 100
+  metric:
+    loss:
+    - false
+    measure:
+    - miou
+    n_steps:
+    - 75
+    percentage:
+    - 0.15
+    skip_empty:
+    - true
+    substrate_fn:
+    - zero
+  model:
+  - dmtnet
