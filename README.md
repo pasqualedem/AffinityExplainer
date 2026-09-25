@@ -1,22 +1,14 @@
-# <img src="imgs/icon.svg" alt="icon" width="40" style="vertical-align: middle;"/> [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
+#  [AffinityExplainer](https://pasqualedem.github.io/AffinityExplainer/)
 
 <div align="center">
 
-![AffinityExplainer Framework](imgs/FSSAffex.svg)
-
-*Few-Shot Semantic Segmentation meets Explainability*
-
-[![NeurIPS 2026](https://img.shields.io/badge/NeurIPS%202026-Accepted-8b5cf6.svg)](https://neurips.cc/)
-[![Website](https://img.shields.io/badge/Website-Visit-orange.svg)](https://pasqualedem.github.io/AffinityExplainer/)
-[![Paper](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2511.18163)
-[![Demo](https://img.shields.io/badge/Demo-Launch-blue.svg)](#one-line-demo)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-[Demo](#one-line-demo) • [Installation](#installation) • [Models](#models) • [Reproduction](#reproduce-the-paper) • [Repository map](#repository-map)
-
-</div>
-
 ---
+
+
+
+This repository accompanies our paper, accepted at **NeurIPS 2026**:
+
+> **Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design**
 
 ## Overview
 
@@ -26,9 +18,11 @@ into an attribution over the support pixels: which parts of which example drove 
 prediction. It needs no gradients, no perturbations and no training, and it applies to any
 model that exposes its matching stage.
 
-This repository accompanies our paper, accepted at **NeurIPS 2026**:
+![AffEx against the baselines on one episode per model](imgs/qualitative.png)
 
-> **Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design**
+One 1-shot episode per model, with AffEx next to the baselines. The prediction is drawn in
+red on the query, the ground truth in blue where it differs. Saliency and Blur IG do not
+apply to INSID3, which is training-free.
 
 ### In this repository
 
@@ -42,16 +36,6 @@ This repository accompanies our paper, accepted at **NeurIPS 2026**:
 - **An interactive demo** to look at attributions episode by episode.
 - **Full reproducibility**: one parameter file per experiment, the episode lists committed
   with them, and datasets and weights downloaded on first use. Setup is `uv sync`.
-
----
-
-## What the attributions look like
-
-One 1-shot episode per model, with AffEx next to the baselines. The prediction is drawn in
-red on the query, the ground truth in blue where it differs. Saliency and Blur IG do not
-apply to INSID3, which is training-free.
-
-![AffEx against the baselines on one episode per model](imgs/qualitative.png)
 
 ---
 
@@ -102,13 +86,13 @@ uv sync
 That is the whole setup. Datasets and checkpoints are fetched the first time something
 asks for them, into `data/` and `checkpoints/`, and never again.
 
-| Variable | Effect |
-| --- | --- |
-| `AFFEX_DATA_DIR` | where datasets live (default `data/`) |
-| `AFFEX_CHECKPOINTS` | where weights live (default `checkpoints/`) |
-| `AFFEX_CACHE_DIR` | where model outputs and attributions are cached between runs (default `cache/`) |
+| Variable                | Effect                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `AFFEX_DATA_DIR`      | where datasets live (default`data/`)                                           |
+| `AFFEX_CHECKPOINTS`   | where weights live (default`checkpoints/`)                                     |
+| `AFFEX_CACHE_DIR`     | where model outputs and attributions are cached between runs (default`cache/`) |
 | `AFFEX_NO_DOWNLOAD=1` | a missing asset raises instead of downloading, for compute nodes with no network |
-| `AFFEX_DEBUG=1` | start the demo with the advanced controls visible |
+| `AFFEX_DEBUG=1`       | start the demo with the advanced controls visible                                |
 
 Two checkpoints cannot be downloaded for you because they are licence-gated: the DINOv3
 weights used by INSID3 and the SANSA adapter. If you ask for those models, the error names
@@ -118,15 +102,15 @@ the page to accept and the directory to drop the file into.
 
 ## Models
 
-| Model | Matching stage | Input |
-| --- | --- | --- |
-| DCAMA | dense cross-attention | 384 |
-| DMTNet | multi-level feature correlation | 400 |
-| INSID3 | DINOv3 dense correspondence (training-free) | 1024 |
-| SANSA | dense SAM2 features | 1024 |
-| GF-SAM | DINOv2 correspondence, SAM decoder | 1024 |
-| Matcher | DINOv2 correspondence, SAM decoder | 518 |
-| PANet head | prototype similarity on DCAMA's encoder | 384 |
+| Model      | Matching stage                              | Input |
+| ---------- | ------------------------------------------- | ----- |
+| DCAMA      | dense cross-attention                       | 384   |
+| DMTNet     | multi-level feature correlation             | 400   |
+| INSID3     | DINOv3 dense correspondence (training-free) | 1024  |
+| SANSA      | dense SAM2 features                         | 1024  |
+| GF-SAM     | DINOv2 correspondence, SAM decoder          | 1024  |
+| Matcher    | DINOv2 correspondence, SAM decoder          | 518   |
+| PANet head | prototype similarity on DCAMA's encoder     | 384   |
 
 The upstream code for GF-SAM, Matcher and SANSA is vendored under `affex/models/`, each
 with its own licence file, so nothing outside this repository has to be cloned.
