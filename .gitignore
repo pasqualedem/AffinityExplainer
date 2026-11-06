@@ -91,7 +91,9 @@ target/
 
 *.png
 
-# Checkpoints
+# Checkpoints: downloaded on first use, only the folder itself is tracked
+/checkpoints/*
+!/checkpoints/.gitkeep
 *.pt
 *.pth
 *.bin

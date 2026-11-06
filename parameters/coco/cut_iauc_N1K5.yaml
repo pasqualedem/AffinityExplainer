@@ -15,7 +15,6 @@ parameters:
         deep_lift,
         lime,
         affinity,
-        masked_affinity,
         signed_affinity,
       ]
 
@@ -67,6 +66,5 @@ other_grids:
           xrai,
           lime,
           affinity,
-          masked_affinity,
           signed_affinity,
         ]

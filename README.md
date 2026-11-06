@@ -34,7 +34,7 @@ model that exposes its matching stage.
 
 One 1-shot episode per model, with AffEx next to the baselines. The prediction is drawn in
 red on the query, the ground truth in blue where it differs. Saliency and Blur IG do not
-apply to INSID3, which is training-free.
+apply to INSID3, whose decision path contains discrete, non-differentiable steps.
 
 ### In this repository
 
@@ -137,7 +137,7 @@ Every experiment is a parameter file under `parameters/`, grouped by model:
 # Table 1, mIoULoss@p for a model and dataset
 uv run python main.py grid --parameters parameters/sansa/pascal_N1K5_aff.yaml
 
-# Table 5, insertion and deletion curves
+# Table 6 (Appendix D), insertion and deletion curves
 uv run python main.py grid --parameters parameters/sansa/insertion_deletion/pascal_N1K5_iaucdauc_1000.yaml
 
 # computational cost
@@ -145,9 +145,16 @@ uv run python main.py grid --parameters parameters/computational/vfm_N1K5.yaml -
 ```
 
 `parameters/<model>/` holds the main runs, with `insertion_deletion/` and `gradients/`
-underneath for the curves and the gradient baselines; `parameters/pascal/` and
-`parameters/coco/` hold the runs that sweep several models at once, `parameters/ablation/`
-the studies in the appendix, and `parameters/computational/` the cost measurements.
+underneath for the curves and the gradient baselines. DCAMA and DMTNet share
+`parameters/pascal/` and `parameters/coco/` (Tables 1 and 6); their LIME rows in Table 1 use
+the configuration selected in Appendix B. `parameters/ablation/` holds the ablation studies,
+`parameters/curves/` the fine-grained insertion curves of Appendix F, and
+`parameters/computational/` the cost measurements. The prototype head of Table 2 is trained
+with `scripts/train_panet.py` (Pascal-5i, fold 0; the COCO-20i rows evaluate that same head,
+as for DCAMA) and evaluated with `parameters/panet/`. GF-SAM and Matcher (Table 3) have
+their own folders. The similarity intervention of Appendix I is
+`scripts/affinity_topk_intervention.py`, summarized by `scripts/summarize_affinity_topk.py`,
+and `scripts/insertion_deletion_example.py` exports the single-episode curves of Appendix L.
 `scripts/experiments.sh` runs the lot in table order. Runs land in
 `out/<timestamp>_<grid name>/`, one directory per configuration, with the per-episode
 scores as csv.

@@ -84,6 +84,8 @@ def smooth(heatmap, alpha):
 
 # Affinity-noise intervention (appendix experiment): module-level knob, 0.0 = no-op.
 SIM_NOISE_STD = 0.0
+# Top-k push-down intervention (appendix experiment): (kappa, tau) or None = no-op.
+SIM_TOPK_DOWN = None
 
 
 def attention(query, key, value, mask=None, dropout=None, aggregation='sum', alpha=0.0, temperature=1.0, **kwargs):
@@ -93,6 +95,11 @@ def attention(query, key, value, mask=None, dropout=None, aggregation='sum', alp
     if SIM_NOISE_STD:
         valid = scores > -1e8  # exclude masked fills
         scores = scores + torch.randn_like(scores) * SIM_NOISE_STD * scores[valid].std()
+    if SIM_TOPK_DOWN is not None:
+        from ...utils.intervention import push_down_topk
+        # The value is the support mask, one entry per key.
+        in_mask = (value[..., 0] > 0.5).unsqueeze(-2)  # [B, h, 1, Nk]
+        scores = push_down_topk(scores, in_mask, *SIM_TOPK_DOWN)
 
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)

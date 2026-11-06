@@ -321,6 +321,19 @@ class FSSCausalMetric(Metric):
                     ]  # Take the top classes for each batch
                 scores[i] = top_preds
 
+                # Record the state the prediction above was made on, before this step's
+                # perturbation is applied: images, masks and prediction must be the same step.
+                if i in self.mid_status_frequency:
+                    self.mid_statuses.append(
+                        (
+                            i,
+                            start[BatchKeys.IMAGES].clone().cpu(),
+                            start[BatchKeys.PROMPT_MASKS].clone().cpu(),
+                            preds,
+                            top_preds.clone(),
+                        )
+                    )
+
             if (
                 i == self.computed_n_steps
             ):  # If we are at the last step, we don't need to change anything
@@ -330,17 +343,6 @@ class FSSCausalMetric(Metric):
                 :, self.step_intervals[i] : self.step_intervals[i + 1]
             ]
             start = self.finish_to_start(start, finish, coords)
-
-            if i in self.mid_status_frequency:
-                self.mid_statuses.append(
-                    (
-                        i,
-                        start[BatchKeys.IMAGES].clone().cpu(),
-                        start[BatchKeys.PROMPT_MASKS].clone().cpu(),
-                        preds,
-                        top_preds.clone(),
-                    )
-                )
             if interactive:
                 yield start, i, scores[: i + 1]
 

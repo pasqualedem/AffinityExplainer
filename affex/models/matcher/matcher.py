@@ -162,6 +162,10 @@ class Matcher:
         # similarity spread, applied on the decision path. No-op unless sim_noise_std is set.
         if getattr(self, "sim_noise_std", 0):
             S = S + torch.randn_like(S) * self.sim_noise_std * S.std()
+        if getattr(self, "sim_topk_down", None) is not None:
+            from ...utils.intervention import push_down_topk
+            in_mask = self.ref_masks_pool.flatten().bool().view(1, -1)  # [1, ns*N]
+            S = push_down_topk(S.t(), in_mask, *self.sim_topk_down).t()
         C = (1 - S) / 2  # distance
 
         S_forward = S[self.ref_masks_pool.flatten().bool()]

@@ -2,6 +2,9 @@ grid: SANSA_T2G_1000_pascal_N1K5_iaucdauc
 parameters:
   model:
   - sansa
+  model_params:
+    differentiable:
+    - true
   cache:
   - false
   explainer:

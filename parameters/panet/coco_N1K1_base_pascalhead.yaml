@@ -1,0 +1,80 @@
+grid: PANet_pascalhead_coco_N1K1_base
+other_grids: null
+parameters:
+  cache:
+  - false
+  dataloader:
+    batch_size:
+    - 1
+    csv_folder:
+    - data_csv
+    num_processes:
+    - 1
+    num_workers:
+    - 8
+  dataset:
+    common:
+      remove_small_annotations:
+      - true
+      custom_preprocess:
+      - false
+      maintain_gt_shape:
+      - false
+    datasets:
+      val_coco20i_N1K1:
+        name:
+        - coco
+        instances_path:
+        - data/coco/annotations/instances_val2014.json
+        all_example_categories:
+        - false
+        img_dir:
+        - data/coco/train_val_2017
+        n_shots:
+        - 1
+        n_ways:
+        - 1
+        do_subsample:
+        - false
+        add_box_noise:
+        - false
+        val_fold_idx:
+        - null
+        n_folds:
+        - null
+        split:
+        - val
+  disable_dauc:
+  - true
+  disable_iauc:
+  - false
+  explainer:
+    name:
+    - random
+    - gaussian_noise
+    - prototype_readout
+  explanation_masking:
+  - logits
+  log_frequency:
+  - 50
+  metric:
+    loss:
+    - true
+    measure:
+    - miou
+    n_steps:
+    - 1
+    percentage:
+    - 0.01
+    - 0.05
+    skip_empty:
+    - true
+    substrate_fn:
+    - zero
+  model:
+  - panet
+  model_params:
+    dataset:
+    - pascal
+    val_fold_idx:
+    - 0

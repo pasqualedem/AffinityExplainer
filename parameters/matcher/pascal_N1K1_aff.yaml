@@ -21,7 +21,7 @@ parameters:
   explanation_masking:
   - logits
   log_frequency:
-  - 10
+  - 50
   disable_iauc:
   - false
   disable_dauc:
@@ -33,6 +33,7 @@ parameters:
     - zero
     percentage:
     - 0.01
+    - 0.05
     measure:
     - miou
     loss:
@@ -41,7 +42,7 @@ parameters:
     - true
   dataset:
     datasets:
-      val_pascal5i_N1K1_30:
+      val_pascal5i_N1K1:
         name:
         - pascal
         data_dir:
@@ -59,7 +60,7 @@ parameters:
         do_subsample:
         - false
         val_num_samples:
-        - 30
+        - 1000
         maintain_gt_shape:
         - false
     common:
@@ -71,7 +72,7 @@ parameters:
       - false
   dataloader:
     num_workers:
-    - 4
+    - 8
     batch_size:
     - 1
     csv_folder:

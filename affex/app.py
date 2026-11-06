@@ -17,6 +17,7 @@ import lovely_tensors as lt
 from PIL import Image
 from io import BytesIO, StringIO
 import zipfile
+import json
 
 # streamlit-drawable-canvas still imports image_to_url from where it lived before
 # Streamlit 1.40; point the old name at the current one before importing it.
@@ -144,7 +145,30 @@ def tensor_to_heatmap(tensor):
     heat_rgb = (rgba[..., :3] * 255).astype(np.uint8)
     return Image.fromarray(heat_rgb)
 
-def to_png(pil):
+def paper_curve_figure(scores, name, auc_value, measure="miou"):
+    """Insertion or deletion curve, drawn as in the paper's appendix figures.
+
+    The same code that produced those figures (app.py at commit 928ba2a).
+    """
+    x = np.linspace(0, 1, len(scores))
+    y = np.asarray(scores, dtype=float)
+    fig, ax = plt.subplots(figsize=(45 / 5, 15 / 5), dpi=150)
+    ax.plot(x, y, linewidth=2)
+    ax.fill_between(x, 0, y, alpha=0.3)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel(f"Pixels {'inserted' if name == 'iauc' else 'deleted'}")
+    ax.set_ylabel(f"Score ({'mIoU' if measure == 'miou' else 'Logits'})")
+    ax.set_title(f"{name.upper()} Curve")
+    ax.text(0.8, 0.8, f"AUC = {(float(auc_value) * 100):.2f}", fontsize=12,
+            bbox=dict(facecolor="white", alpha=0.6))
+    ax.grid(True, linestyle="--", linewidth=0.7, alpha=0.6)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    return fig
+
+
+def to_png(pil, compress_level=6):
     """Encode once, at full resolution, and hand st.image the bytes.
 
     st.image re-encodes a PIL image on every rerun; at 1024 px that is ~0.1 s per
@@ -152,7 +176,7 @@ def to_png(pil):
     bytes also get the same media URL, so the browser re-uses what it already has.
     """
     buf = BytesIO()
-    pil.save(buf, format="PNG")
+    pil.save(buf, format="PNG", compress_level=compress_level)
     return buf.getvalue()
 
 
@@ -288,13 +312,23 @@ def load_loader(dataset: str, image_size: int, n_shots: int):
     )
     return val_loader
 
+def model_device(model):
+    """Where the model runs. The wrappers around external pipelines (GF-SAM, Matcher)
+    register no parameters of their own, so fall back to the device they were built on."""
+    for tensor in model.parameters():
+        return tensor.device
+    for tensor in model.buffers():
+        return tensor.device
+    return torch.device(getattr(model, "_device", "cuda" if torch.cuda.is_available() else "cpu"))
+
+
 def run_model_on_batch(model, batch, gt):
     # The batch may be cached from a previous device selection; always move it to
     # wherever the (possibly rebuilt) model actually lives.
-    model_device = next(model.parameters()).device
-    batch = to_device(batch, model_device)
+    device = model_device(model)
+    batch = to_device(batch, device)
     if gt is not None:
-        gt = gt.to(model_device)
+        gt = gt.to(device)
     target_shape = batch[BatchKeys.IMAGES][:, 0].shape[2:]
     with torch.no_grad():
         result = model(batch, postprocess=False)
@@ -455,13 +489,16 @@ AFFINITY_DEFAULTS = {
     "mask_dilation_kernel": 7,
 }
 
-# Per-model starting point. INSID3 and SANSA keep the paper settings; on DCAMA and DMTNet
-# the dilation is dropped, which leaves the attribution maps sharper to look at.
+# Per-model starting point. INSID3, SANSA, GF-SAM and Matcher keep the paper settings (GF-SAM
+# and Matcher at their 37x37 grid); on DCAMA and DMTNet the dilation is dropped, which leaves
+# the attribution maps sharper to look at.
 AFFINITY_BY_MODEL = {
     "insid3": dict(AFFINITY_DEFAULTS, explanation_size=64),
     "sansa": dict(AFFINITY_DEFAULTS, explanation_size=64),
-    "gfsam": dict(AFFINITY_DEFAULTS, explanation_size=64),
-    "matcher": dict(AFFINITY_DEFAULTS, explanation_size=64),
+    "gfsam": dict(AFFINITY_DEFAULTS, explanation_size=37),
+    "matcher": dict(AFFINITY_DEFAULTS, explanation_size=37),
+    # Prototype head on DCAMA's encoder: the paper explains it at its input resolution.
+    "panet": dict(AFFINITY_DEFAULTS, explanation_size=384),
     "dcama": dict(AFFINITY_DEFAULTS, mask_dilation_radius=0, mask_dilation_kernel=None),
     "dmtnet": dict(AFFINITY_DEFAULTS, mask_dilation_radius=0, mask_dilation_kernel=None),
 }
@@ -640,7 +677,7 @@ def main():
 
         with st.expander("Model Settings", expanded=True):
             model_name = st.selectbox(
-                "Model", ["dcama", "dmtnet", "insid3", "sansa", "gfsam"],
+                "Model", ["dcama", "dmtnet", "insid3", "sansa", "gfsam", "matcher", "panet"],
                 format_func=lambda k: label_for(k, MODEL_NAMES))
             
             # insid3/sansa load their weights from their own repos, not checkpoints/<name>/
@@ -949,6 +986,43 @@ def main():
             with cols[i]:
                 st.image(pil, caption=f"Support Attribution {i}", use_container_width=True)
 
+        # Everything shown above for this episode, as the panels of the appendix figures:
+        # the PNGs exactly as displayed, the raw attribution, and what produced them.
+        ep = st.session_state.get("episode", {})
+        zip_token = (model_name, dataset, int(num_shots), ep.get("batch_index"), name,
+                     st.session_state.get("mask_source"), id(st.session_state["explanation"]))
+        if st.session_state.get("episode_zip_token") != zip_token:
+            header = ep.get("header_pils") or {}
+            overlay = st.session_state["result"].get("overlay_pils") or {}
+            buf = BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+                if "query" in header:
+                    zf.writestr("query.png", header["query"])
+                for i, png in enumerate(header.get("supports", [])):
+                    zf.writestr(f"support_{i}.png", png)
+                for key, fname in (("both", "query_overlay.png"), ("seg", "query_prediction.png"),
+                                   ("gt", "query_gt.png"), ("logits", "query_logits.png")):
+                    if key in overlay:
+                        zf.writestr(fname, overlay[key])
+                for i, png in enumerate(exp_pils):
+                    zf.writestr(f"attribution_{i}.png", png)
+                raw = BytesIO()
+                np.save(raw, st.session_state["explanation"][0].float().cpu().numpy())
+                zf.writestr("explanation.npy", raw.getvalue())
+                zf.writestr("episode.json", json.dumps({
+                    "model": model_name, "dataset": dataset, "dataset_name": ep.get("dataset_name"),
+                    "shots": int(num_shots), "episode_index": ep.get("batch_index"),
+                    "explainer": name, "explained_region": st.session_state.get("mask_source"),
+                }, indent=2, default=str))
+            st.session_state["episode_zip"] = buf.getvalue()
+            st.session_state["episode_zip_token"] = zip_token
+        st.download_button(
+            "📦 Download episode (query, supports, overlays, attributions)",
+            st.session_state["episode_zip"],
+            f"episode_{model_name}_{dataset}_N1K{int(num_shots)}_ep{ep.get('batch_index')}.zip",
+            "application/zip", key="dl_episode",
+        )
+
         st.divider()
         
         # 5. Causal Metrics (IAUC / DAUC)
@@ -1001,13 +1075,37 @@ def main():
                         "auc": metric.xauc,
                         "scores": metric.scores,
                         "mid_statuses": metric.mid_statuses,
+                        "measure": measure,
                     }
 
         # 6. Interactive Dashboard
-        if "metrics" in st.session_state:
+        # Empty when a run was interrupted (any widget change reruns the script): show nothing.
+        if st.session_state.get("metrics"):
             st.markdown("### Interactive Analysis")
             
             metric_names = list(st.session_state["metrics"].keys())
+
+            # The curves alone, as drawn in the paper: built once per set of results.
+            curves_token = tuple((n, float(st.session_state["metrics"][n]["auc"])) for n in metric_names)
+            if st.session_state.get("curves_zip_token") != curves_token:
+                curves_buf = BytesIO()
+                with zipfile.ZipFile(curves_buf, "w") as zf:
+                    for n in metric_names:
+                        r = st.session_state["metrics"][n]
+                        fig = paper_curve_figure(r["scores"][:, 0].numpy(), n, r["auc"], r.get("measure", "miou"))
+                        for ext in ("svg", "pdf", "png"):
+                            b = BytesIO()
+                            fig.savefig(b, format=ext, bbox_inches="tight")
+                            zf.writestr(f"{n}_curve.{ext}", b.getvalue())
+                        plt.close(fig)
+                        zf.writestr(f"{n}_curve.csv", pd.DataFrame(r["scores"].numpy()).to_csv(index=False))
+                st.session_state["curves_zip"] = curves_buf.getvalue()
+                st.session_state["curves_zip_token"] = curves_token
+            st.download_button(
+                "📈 Download " + "/".join(n.upper() for n in metric_names) + " plots",
+                st.session_state["curves_zip"], "curves.zip", "application/zip", key="dl_curves",
+            )
+
             tabs = st.tabs([f"📊 {n.upper()} Analysis" for n in metric_names])
 
             for i, name in enumerate(metric_names):
@@ -1069,12 +1167,14 @@ def main():
                         viz_tabs = st.tabs(["Modified Support", "Model Segmentation", "Probabilities"])
                         
                         with viz_tabs[0]:
-                            # Show just the first shot for brevity if multiple
-                            masked_shot = tint_foreground(
-                                unnormalize(mid_images[0, 1])[0].cpu(),
-                                mid_masks[0, 0, 1].cpu().bool(),
-                            )
-                            st.image(tensor_to_pil(masked_shot), caption=f"Support Shot 0 (Perturbed)", use_container_width=True)
+                            n_shots = mid_masks.shape[1]
+                            shot_cols = st.columns(n_shots)
+                            for k in range(n_shots):
+                                masked_shot = tint_foreground(
+                                    unnormalize(mid_images[0, 1 + k])[0].cpu(),
+                                    mid_masks[0, k, 1].cpu().bool(),
+                                )
+                                shot_cols[k].image(tensor_to_pil(masked_shot), caption=f"Shot {k}", use_container_width=True)
                         
                         with viz_tabs[1]:
                             mid_pred_seg = probs.argmax(dim=1)[0]
@@ -1089,21 +1189,43 @@ def main():
                     
                     # --- Re-added Bulk Download ---
                     st.divider()
-                    if st.button(f"📦 Generate ZIP of all images ({name.upper()})", key=f"zip_{name}"):
+                    all_steps = [m[0] for m in mid_statuses]
+                    export_steps = st.multiselect(
+                        "Steps to include in the ZIP", all_steps,
+                        default=[current_step_int], key=f"zip_steps_{name}",
+                    )
+                    if st.button(f"📦 Generate ZIP ({name.upper()}, {len(export_steps)} steps)", key=f"zip_{name}"):
                         try:
                             zip_buffer = BytesIO()
                             with zipfile.ZipFile(zip_buffer, "w") as zf:
-                                # Iterate over ALL statuses just for the zip
-                                for s_idx, m_stat in enumerate(mid_statuses):
-                                    j_step, _, _, m_probs, _ = m_stat
-                                    
-                                    # Save Probability Map
-                                    prob_pil = tensor_to_heatmap(m_probs[0, 1].cpu())
-                                    p_buf = BytesIO()
-                                    prob_pil.save(p_buf, format="PNG")
-                                    zf.writestr(f"{name}_step{j_step}_probs.png", p_buf.getvalue())
-                                    
-                                    # (Can add segmentation or support images here similarly if needed)
+                                zf.writestr(f"{name}_curve.csv", pd.DataFrame(scores.numpy()).to_csv(index=False))
+                                curve_fig = paper_curve_figure(
+                                    scores[:, 0].numpy(), name, auc_val, result.get("measure", "miou")
+                                )
+                                for ext in ("svg", "pdf", "png"):
+                                    c_buf = BytesIO()
+                                    curve_fig.savefig(c_buf, format=ext, bbox_inches="tight")
+                                    zf.writestr(f"{name}_curve.{ext}", c_buf.getvalue())
+                                plt.close(curve_fig)
+                                for m_stat in mid_statuses:
+                                    j_step, m_images, m_masks, m_probs, _ = m_stat
+                                    if j_step not in export_steps:
+                                        continue
+                                    prefix = f"{name}_step{j_step}"
+                                    zf.writestr(f"{prefix}_probs.png", to_png(tensor_to_heatmap(m_probs[0, 1].cpu()), compress_level=1))
+                                    m_seg = tint_foreground(
+                                        unnormalize(m_images[0, 0])[0].cpu(),
+                                        m_probs.argmax(dim=1)[0].cpu().bool(),
+                                    )
+                                    zf.writestr(f"{prefix}_segmentation.png", to_png(tensor_to_pil(m_seg), compress_level=1))
+                                    # Every support shot as the model saw it at this step: perturbed
+                                    # pixels and the part of the mask that is still present.
+                                    for k in range(m_masks.shape[1]):
+                                        m_shot = tint_foreground(
+                                            unnormalize(m_images[0, 1 + k])[0].cpu(),
+                                            m_masks[0, k, 1].cpu().bool(),
+                                        )
+                                        zf.writestr(f"{prefix}_shot{k}.png", to_png(tensor_to_pil(m_shot), compress_level=1))
                             
                             zip_buffer.seek(0)
                             st.download_button(

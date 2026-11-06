@@ -195,6 +195,13 @@ class INSID3(nn.Module):
             # Affinity-noise intervention (appendix experiment): no-op unless sim_noise_std is set.
             if getattr(self, "sim_noise_std", 0):
                 sim_m = sim_m + torch.randn_like(sim_m) * self.sim_noise_std * sim_m.std()
+            if getattr(self, "sim_topk_down", None) is not None:
+                from ...utils.intervention import push_down_topk
+                b, Hs, Ws, hq, wq = sim_m.shape
+                in_mask = downsample_mask(ref_masks[m:m+1], Hs, Ws).reshape(1, 1, Hs * Ws)
+                s = sim_m.reshape(b, Hs * Ws, hq * wq).transpose(1, 2)  # (b, Nq, Ns)
+                s = push_down_topk(s, in_mask, *self.sim_topk_down)
+                sim_m = s.transpose(1, 2).reshape(b, Hs, Ws, hq, wq)
             sim_maps.append(sim_m)
         # Dense support<->query correspondence per shot, stacked as (b, S, Hs, Ws, h, w).
         # This is the affinity tensor consumed by AffinityExplainer.

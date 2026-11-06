@@ -97,8 +97,8 @@ class GFSAM:
         ref_feats_sem, tar_feats_sem = self.extract_img_feats()
 
         # positive and negative similarity maps
-        neg_sim_map, neg_mean_sim_map = self.generate_prior(tar_feats_sem, ref_feats_sem, 1-self.ref_masks)
-        sim_map, mean_sim_map = self.generate_prior(tar_feats_sem, ref_feats_sem, self.ref_masks)
+        neg_sim_map, neg_mean_sim_map = self.generate_prior(tar_feats_sem, ref_feats_sem, 1-self.ref_masks, support_query=True)
+        sim_map, mean_sim_map = self.generate_prior(tar_feats_sem, ref_feats_sem, self.ref_masks, support_query=True)
         # AffEx: snapshot the support->query correspondence from the positive prior here, before the
         # later per-component self-similarity calls (generate_prior at ~L209) overwrite _pixelwise_coms.
         self._pixelwise_coms_positive = [c.detach().clone() for c in self._pixelwise_coms]
@@ -300,7 +300,7 @@ class GFSAM:
             tar_masks_list.append(tar_masks)
         return tar_masks_list
 
-    def generate_prior(self, query_feat_high, supp_feat_high, s_mask):
+    def generate_prior(self, query_feat_high, supp_feat_high, s_mask, support_query=False):
         bsize, sp_sz2, _= query_feat_high.size()[:]
         sp_sz = int(math.sqrt(sp_sz2))
 
@@ -308,6 +308,18 @@ class GFSAM:
         # Affinity-noise intervention (appendix experiment): no-op unless sim_noise_std is set.
         if getattr(self, "sim_noise_std", 0):
             similarities = [s + torch.randn_like(s) * self.sim_noise_std * s.std() for s in similarities]
+        # Top-k push-down (appendix experiment): support->query similarities only, never the
+        # later query self-similarity calls. The in-mask set is always the foreground mask, so
+        # the positive and negative priors see the same modified similarities.
+        if support_query and getattr(self, "sim_topk_down", None) is not None:
+            from ...utils.intervention import push_down_topk
+            modified = []
+            for st, s in enumerate(similarities):
+                fg = F.interpolate(self.ref_masks[st].unsqueeze(0).float(), size=(sp_sz, sp_sz),
+                                   mode='bilinear', align_corners=True)
+                in_mask = (fg.flatten(2) > 0.5)  # [1, 1, supp_hw]
+                modified.append(push_down_topk(s.transpose(1, 2), in_mask, *self.sim_topk_down).transpose(1, 2))
+            similarities = modified
         corr_query_mask_list = []
         cos_similarity_list = []
         cosine_eps = 1e-7

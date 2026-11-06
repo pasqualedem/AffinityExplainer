@@ -10,7 +10,6 @@ parameters:
     - gaussian_noise
     - lime
     - affinity
-    - masked_affinity
     - signed_affinity
     explanation_size:
     - 64

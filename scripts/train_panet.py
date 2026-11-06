@@ -11,6 +11,7 @@ model for the reviewer M83E same-encoder/different-head comparison, not SOTA.
 Usage:
   python train_panet.py --datapath <pascal_root_with_JPEGImages_and_SegmentationClassAug> \
       --fold 0 --bsz 16 --lr 1e-3 --nepoch 30 --patience 3
+  python train_panet.py --benchmark coco --datapath data/coco --fold 0   # COCO-20i
 """
 import argparse
 import os
@@ -23,19 +24,21 @@ from torchvision import transforms
 
 from affex.models.panet_head import PANetMultiClass
 from affex.utils.utils import ResultDict
+from train_panet_data.coco import DatasetCOCO
 from train_panet_data.pascal import DatasetPASCAL
 
 
-def build_loaders(datapath, fold, bsz, nworker):
+def build_loaders(benchmark, datapath, fold, bsz, nworker):
     tfm = transforms.Compose([
         transforms.Resize((384, 384)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    trn = DatasetPASCAL(datapath, fold=fold, transform=tfm, split='trn', shot=1,
-                        use_original_imgsize=False)
-    val = DatasetPASCAL(datapath, fold=fold, transform=tfm, split='val', shot=1,
-                        use_original_imgsize=False)
+    dataset = {'pascal': DatasetPASCAL, 'coco': DatasetCOCO}[benchmark]
+    trn = dataset(datapath, fold=fold, transform=tfm, split='trn', shot=1,
+                  use_original_imgsize=False)
+    val = dataset(datapath, fold=fold, transform=tfm, split='val', shot=1,
+                  use_original_imgsize=False)
     trn_loader = DataLoader(trn, batch_size=bsz, shuffle=True, num_workers=nworker,
                             drop_last=True)
     val_loader = DataLoader(val, batch_size=bsz, shuffle=False, num_workers=nworker)
@@ -86,6 +89,7 @@ def run_epoch(model, loader, optimizer, device, training, max_batches=None):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--benchmark', type=str, default='pascal', choices=['pascal', 'coco'])
     parser.add_argument('--datapath', type=str, required=True)
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--bsz', type=int, default=16)
@@ -102,7 +106,7 @@ def main():
                         help='cap validation batches per epoch')
     args = parser.parse_args()
 
-    out = args.out or f'checkpoints/panet/pascal/swin_fold{args.fold}.pt'
+    out = args.out or f'checkpoints/panet/{args.benchmark}/swin_fold{args.fold}.pt'
     os.makedirs(os.path.dirname(out), exist_ok=True)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -111,12 +115,14 @@ def main():
 
     optimizer = optim.SGD(model.get_learnable_params(), lr=args.lr, momentum=0.9,
                           weight_decay=args.lr / 10, nesterov=True)
-    trn_loader, val_loader = build_loaders(args.datapath, args.fold, args.bsz, args.nworker)
+    trn_loader, val_loader = build_loaders(args.benchmark, args.datapath, args.fold, args.bsz,
+                                           args.nworker)
 
     best_miou = float('-inf')
     bad_epochs = 0
     for epoch in range(args.nepoch):
         np.random.seed()  # episodic sampling randomness for training
+        trn_loader.dataset.seed = int(np.random.randint(1, 2**31))  # COCO episodes
         trn_loss, trn_miou = run_epoch(model, trn_loader, optimizer, device,
                                        training=True, max_batches=args.max_batches)
         np.random.seed(0)  # frozen val episodes

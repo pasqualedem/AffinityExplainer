@@ -13,9 +13,7 @@ parameters:
         blur_ig,
         xrai,
         deep_lift,
-        lime,
         affinity,
-        masked_affinity,
         signed_affinity,
       ]
 
@@ -65,8 +63,23 @@ other_grids:
           integrated_gradients,
           blur_ig,
           xrai,
-          lime,
           affinity,
-          masked_affinity,
           signed_affinity,
         ]
+  # LIME with the configuration selected by the grid search of Appendix B.
+  - model: [dcama]
+    cache: [False]
+    explainer:
+      name: [lime]
+      model_type: [ridge]
+      kernel_width: [0.5]
+      image_weight: [0.2]
+      slic_num_segments: [160]
+  - model: [dmtnet]
+    cache: [False]
+    explainer:
+      name: [lime]
+      model_type: [ridge]
+      kernel_width: [0.5]
+      image_weight: [0.2]
+      slic_num_segments: [160]
