@@ -175,25 +175,29 @@
                         <p>
                             Few-Shot Semantic Segmentation (FSS) models achieve strong performance in segmenting novel
                             classes with minimal labeled examples, yet their decision-making processes remain largely
-                            opaque. While explainable AI has advanced significantly in standard computer vision tasks,
-                            interpretability in FSS remains underexplored despite its critical importance for
-                            understanding model behavior and guiding support set selection in data-scarce scenarios.
+                            opaque. Explainable AI has matured on standard computer vision tasks, but not on FSS, where an
+                            explanation would tell a practitioner which support pixels the prediction rested on and which
+                            examples to provide next.
                         </p>
                         <p>
                             We argue that matching-based FSS models are <strong>interpretable by design</strong>: their
-                            core similarity computation between support and query features constitutes an inherent
-                            attribution mechanism. Our approach, <strong>Affinity Explainer (AffEx)</strong>, makes this
-                            intrinsic interpretability explicit by extracting attribution maps directly from matching
+                            query&ndash;support similarity scores, once normalized and processed, attribute the prediction
+                            to individual support pixels. Our approach, <strong>Affinity Explainer (AffEx)</strong>, makes
+                            this intrinsic interpretability explicit by extracting attribution maps directly from matching
                             scores at multiple feature levels, without requiring gradients or external perturbations.
                         </p>
                         <p>
-                            We extend standard interpretability evaluation metrics to the FSS domain and propose
+                            We extend the standard causal metrics for evaluating explanations to the FSS domain and propose
                             additional metrics to better capture the practical utility of explanations in few-shot
-                            scenarios. Comprehensive experiments on FSS benchmark datasets demonstrate that AffEx
-                            significantly outperforms adapted standard attribution methods, confirming that the matching
-                            mechanism itself is the key driver of interpretability. Qualitative analysis reveals
-                            structured, coherent attention patterns that align with model architectures and enable
-                            effective model diagnosis, laying the groundwork for interpretable FSS research.
+                            scenarios. Experiments on two FSS benchmarks, covering seven architectures that range from
+                            classical matching-based models to recent pipelines built on vision foundation models
+                            (DINOv2/v3, SAM, SAM2) and a prototype-based head, show that AffEx outperforms adapted standard
+                            attribution methods at nearly every evaluation point, and that the gain comes from the matching
+                            mechanism itself. On pipelines whose segmentation stage transforms the matching output, the same
+                            evaluation doubles as a diagnostic of where the decision is made, and on the prototype-based
+                            head AffEx subsumes the prototype-style read-out as a special case. Qualitatively, the
+                            attribution maps expose how each architecture resolves the support set, and we show how they
+                            guide model diagnosis.
                         </p>
                     </div>
                 </div>
@@ -800,7 +804,7 @@
                         <tr><td>Blur IG</td><td>33.89</td><td>23.29</td><td>36.69</td><td>22.84</td></tr>
                         <tr><td>XRAI</td><td>29.65</td><td>14.50</td><td>26.59</td><td>12.08</td></tr>
                         <tr><td>Deep Lift</td><td>32.60</td><td>24.85</td><td>36.67</td><td>24.07</td></tr>
-                        <tr><td>LIME</td><td>27.27</td><td>13.44</td><td>32.44</td><td>15.29</td></tr>
+                        <tr><td>LIME</td><td>26.36</td><td>13.42</td><td>30.62</td><td>14.60</td></tr>
                         <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>19.84</u></td><td><u>10.08</u></td><td><u>17.41</u></td><td><b>8.85</b></td></tr>
                         <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>17.19</b></td><td><b>7.64</b></td><td><b>15.38</b></td><td><u>9.83</u></td></tr>
                         <tr class="model-header"><th colspan="5">DMTNet</th></tr>
@@ -810,7 +814,7 @@
                         <tr><td>Integrated Gradients</td><td>20.53</td><td>20.81</td><td>21.63</td><td>20.32</td></tr>
                         <tr><td>Blur IG</td><td>20.22</td><td>17.42</td><td>21.54</td><td>20.20</td></tr>
                         <tr><td>XRAI</td><td>14.83</td><td>6.30</td><td>16.48</td><td>10.73</td></tr>
-                        <tr><td>LIME</td><td>14.84</td><td>8.32</td><td>19.20</td><td>11.36</td></tr>
+                        <tr><td>LIME</td><td>14.07</td><td>7.85</td><td>17.91</td><td>12.48</td></tr>
                         <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>10.97</u></td><td><u>4.14</u></td><td><u>10.53</u></td><td><u>4.49</u></td></tr>
                         <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>10.54</b></td><td><b>3.90</b></td><td><b>10.35</b></td><td><b>4.09</b></td></tr>
                         <tr class="model-header"><th colspan="5">INSID3</th></tr>
@@ -858,7 +862,7 @@
                         <tr><td>Blur IG</td><td>47.96</td><td>28.61</td><td>46.86</td><td>21.53</td></tr>
                         <tr><td>XRAI</td><td>37.49</td><td>13.25</td><td>26.25</td><td>8.55</td></tr>
                         <tr><td>Deep Lift</td><td>46.76</td><td>28.93</td><td>45.82</td><td>22.83</td></tr>
-                        <tr><td>LIME</td><td>40.03</td><td>13.97</td><td>36.71</td><td>13.40</td></tr>
+                        <tr><td>LIME</td><td>32.63</td><td>14.20</td><td>33.81</td><td>12.18</td></tr>
                         <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>22.85</u></td><td><u>7.90</u></td><td><u>13.78</u></td><td><b>5.72</b></td></tr>
                         <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>20.22</b></td><td><b>6.79</b></td><td><b>11.56</b></td><td><u>5.85</u></td></tr>
                         <tr class="model-header"><th colspan="5">DMTNet</th></tr>
@@ -868,7 +872,7 @@
                         <tr><td>Integrated Gradients</td><td>32.03</td><td>37.64</td><td>30.31</td><td>33.07</td></tr>
                         <tr><td>Blur IG</td><td>31.56</td><td>35.04</td><td>29.77</td><td>33.13</td></tr>
                         <tr><td>XRAI</td><td>20.56</td><td>10.80</td><td>20.03</td><td>12.88</td></tr>
-                        <tr><td>LIME</td><td>22.95</td><td>10.40</td><td>23.46</td><td>12.43</td></tr>
+                        <tr><td>LIME</td><td>18.90</td><td>9.57</td><td>21.14</td><td>13.83</td></tr>
                         <tr class="ours-row"><td><strong>Unmasked AffEx</strong></td><td><u>16.35</u></td><td><u>7.85</u></td><td><u>13.34</u></td><td><u>5.32</u></td></tr>
                         <tr class="ours-row-best"><td><strong>AffEx</strong></td><td><b>16.33</b></td><td><b>7.83</b></td><td><b>13.29</b></td><td><b>5.29</b></td></tr>
                         <tr class="model-header"><th colspan="5">INSID3</th></tr>
