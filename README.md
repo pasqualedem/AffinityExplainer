@@ -192,13 +192,11 @@ scripts/         the experiment drivers, the appendix experiments and a model-ou
 ## Citation
 
 ```bibtex
-@misc{marinisMatchingBasedFewShotSemantic2025,
-	title = {Matching-{Based} {Few}-{Shot} {Semantic} {Segmentation} {Models} {Are} {Interpretable} by {Design}},
-	url = {http://arxiv.org/abs/2511.18163},
-	doi = {10.48550/arXiv.2511.18163},
-	publisher = {arXiv},
-	author = {Marinis, Pasquale De and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
-	year = {2025},
+@inproceedings{demarinis2026affex,
+  title={Matching-Based Few-Shot Semantic Segmentation Models Are Interpretable by Design},
+  author={De Marinis, Pasquale and Kaymak, Uzay and Brussee, Rogier and Vessio, Gennaro and Castellano, Giovanna},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2026}
 }
 ```
 
